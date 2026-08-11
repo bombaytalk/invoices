@@ -1,0 +1,15 @@
+{
+  "name": "Bombaytalk Invoice App",
+  "short_name": "BT Invoices",
+  "description": "Catering & Party Trays invoicing for Bombaytalk Catering Services LLC",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#eef1f6",
+  "theme_color": "#1f3864",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
