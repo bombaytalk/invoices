@@ -255,6 +255,13 @@
 
   <!-- ITEMS -->
   <div class="sectionband"><span id="itemsTitle">MENU &amp; PRICING</span><span id="itemsRight"></span></div>
+  <div class="pkgbar traysonly hideprint" style="display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;background:#eaf0fb;border:1px solid var(--line);border-radius:6px;padding:8px 12px;margin-bottom:8px;font-size:12.5px">
+    <b style="color:var(--navy)">Package:</b>
+    <select id="pkgSel" onchange="calc()"><option value="">None (à la carte)</option><option>Catering Package #1</option><option>Catering Package #2</option><option>Catering Package #3</option></select>
+    <label>Guests <input id="pkgGuests" type="number" min="0" oninput="calc()" style="width:60px"></label>
+    <label>Under-50 +$/person <input id="pkgSurcharge" type="number" min="0" step="0.5" value="3" oninput="calc()" style="width:52px"></label>
+    <span id="pkgInfo" style="color:var(--muted)"></span>
+  </div>
   <table id="itemsTbl">
     <thead><tr>
       <th style="width:44px">Qty</th>
@@ -270,6 +277,7 @@
   </table>
   <button class="addrow hideprint" onclick="addItem()">＋ Add line</button>
   <div class="note traysonly">Tray sizes - ST: Small Tray, MT: Medium Tray, LT: Large Tray, SDT: Small Deep Tray, LDT: Large Deep Tray. Tip: start typing an item name, pick it from the list and choose a size - the price fills in automatically (you can still edit it).</div>
+  <div id="pkgSlots" class="note traysonly" style="margin-top:4px"></div>
 
   <!-- BOTTOM: payments + notes (left) · compact totals (right) -->
   <div class="bottom">
@@ -298,6 +306,7 @@
       </div>
       <div class="tots">
         <div class="totrow" id="rFood"><span>Food Subtotal</span><span class="val" id="tFood">$0.00</span></div>
+        <div class="totrow" id="rPkg"><span id="pkgLbl">Package</span><span class="val" id="tPkg">$0.00</span></div>
         <div class="totrow" id="rDisc"><span>Food Discount</span><span class="val" id="tDisc">$0.00</span></div>
         <div class="totrow cateronly" id="rOther"><span>Other Charges</span><span class="val" id="tOther">$0.00</span></div>
         <div class="totrow" id="rDel"><span>Delivery Fee</span><span class="val" id="tDel">$0.00</span></div>
@@ -340,8 +349,17 @@ let curId=null;
 const SIZES=['','ST','MT','LT','SDT','LDT'];
 
 /* ---------- Party Trays price catalog (auto-fill prices; editable) ---------- */
-const PRICELIST={"Aloo Tikki Chat":{"ST":43},"American Chopsuey":{"ST":55},"Bombay Grilled Sandwich":{"LT":102,"ST":51},"Bombay Veg Sandwich":{"MT":77},"Burnt Garliv Veg. Fried Rice":{"LT":102},"Chilli Garlic Noodles":{"MT":85},"Chilli Paneer with Gravy":{"MT":85,"ST":55,"LT":111},"Chinese Fusion Bhel":{"LT":102},"Chinese Samosa (30pcs)":{"MT":68},"Chole Bhature":{"ST":77,"MT":111},"Chole Bhature (45pcs)":{"MT":111},"Chole Bhature (75pcs)":{"LT":187},"Dabeli Sliders":{"pcs":3},"Dahi Vada":{"ST":47,"pcs":3},"Dry Chilli Paneer":{"ST":60,"LT":119,"MT":94},"Dry Gobi Manchurian":{"LT":119,"MT":94},"Dry Veg Manchurian":{"MT":85},"Fried Tofu":{"MT":81,"order":13},"Gobi 65":{"MT":77},"Gobi Manchurian Dry":{"LT":119},"Gobi Manchurian Gravy":{"MT":85,"ST":55,"order":13},"Gulab Jamun":{"pcs":2},"Hakka Noodles":{"ST":51,"MT":81,"LT":102,"order":13},"Hariyali Paneer":{"ST":60},"Idli Sambhar":{"LT":94},"Mexican Samosa (20pcs)":{"ST":51},"Naan":{"pcs":3},"Paneer Kathi Rolls":{"MT":102,"ST":55},"Paneer Makhni":{"LT":60},"Paneer Manchurian Gravy":{"LT":119},"Papdi Chat":{"LT":102},"Pav (only)":{"pcs":1},"Pav Bhaji":{"ST":77,"MT":111,"LT":187,"order":13},"Plain White Rice":{"ST":38},"Ras Malai":{"pcs":2},"Rose Falooda with Ice Cream (90ppl)":{"cups":2},"Samosa":{"ST":43,"MT":60},"Samosa Chat":{"MT":111,"LT":187,"order":9,"ST":77},"Sandwich Platter":{"MT":77},"Schezwan Noodles":{"LT":111,"MT":85,"ST":55},"Schezwan Noodles (Deep)":{"LT":94},"Soup":{"LT":102},"Spring Rolls":{"LT":204,"MT":81},"Stuffed Kulcha (90ppl)":{"pcs":3},"Tandoori Paneer":{"LT":115,"MT":85},"Thai Basil Fried Rice":{"LT":85},"Thai Curry":{"LT":102,"MT":81},"Triple Schezwan Fried Rice":{"ST":111},"Vada Pav":{"pcs":3},"Veg Biryani":{"ST":55,"MT":85,"LT":111},"Veg Fried Rice":{"ST":43,"MT":64},"Veg Manchurian Dry":{"LT":111},"Veg Manchurian Gravy":{"LT":102,"order":13,"MT":81,"ST":51},"Veg Sandwich":{"order":10}};
+const PRICELIST={"7-Layer Dip with Tostada":{"ST":75,"MT":135,"LT":160},"Achari Aloo":{"ST":55,"MT":100,"LT":120},"Achari Vegetable":{"ST":55,"MT":100,"LT":120},"Aloo Amritsari":{"ST":55,"MT":100,"LT":120},"Aloo Gobi":{"ST":55,"MT":100,"LT":120},"Aloo Kathi":{"ST":60,"MT":130,"LT":180},"Aloo Tikki":{"ST":50,"MT":90,"LT":110},"American Chop Suey":{"ST":65,"MT":120,"LT":135},"Amritsari Chole":{"ST":55,"MT":100,"LT":120},"Avial":{"ST":55,"MT":100,"LT":120},"Bagara Baingan":{"ST":70,"MT":125,"LT":145},"Baingan Bharta":{"ST":65,"MT":120,"LT":140},"Bajra Rotla":{"ea":3.5},"Batata Vada":{"ST":50,"MT":90,"LT":110},"Beans Fry":{"ST":55,"MT":100,"LT":120},"Bendakaya Fry":{"ST":70,"MT":125,"LT":145},"Bhinda Gujarati":{"ST":75,"MT":135,"LT":150},"Bhindi Masala":{"ST":65,"MT":120,"LT":140},"Bisibela Bath":{"ST":65,"MT":120,"LT":135},"Black Chana":{"ST":55,"MT":100,"LT":120},"Bombay Vada Pav":{"ea":4.0},"Boondi":{"ST":20,"MT":35,"LT":55,"ea":1.5},"Bread Pakoda":{"ea":2.5},"Bread Pakora":{"ST":50,"MT":90,"LT":110},"Bread Upma":{"ST":55,"MT":80,"LT":110},"Cauliflower Dry Fruit":{"ST":60,"MT":100,"LT":120},"Chana Dal":{"ST":55,"MT":100,"LT":120},"Cheese Balls (Potato, Rice, or Corn)":{"ST":50,"MT":90,"LT":110},"Chilli Bean Soup (7 oz cup)":{"ea":4.0},"Chilli Garlic Noodles":{"ST":65,"MT":120,"LT":135},"Chilli Paneer Gravy":{"ST":65,"MT":120,"LT":135},"Chinese Idli":{"ST":60,"MT":110,"LT":125},"Chinese Pakoda":{"ST":55,"MT":100,"LT":120},"Chinese Samosa":{"ST":55,"MT":100,"LT":120},"Chinese Vegetable Fried Rice":{"ST":60,"MT":110,"LT":125},"Chole Bhatura":{"ST":100,"MT":160,"LT":220},"Chori Dhokli":{"ST":70,"MT":130,"LT":145},"Churma Gor":{"ea":2.5},"Clear Vegetable":{"ST":70,"MT":125,"LT":145},"Coconut Mawa":{"ea":14.0},"Coconut Rice":{"ST":55,"MT":100,"LT":120},"Coffee":{"ea":2.0},"Corn Bhel":{"ST":55,"MT":100,"LT":120},"Corn Bhel Cup":{"ea":3.0},"Corn Palak Raita":{"ST":20,"MT":35,"LT":55},"Creamy Chole (Bombay Talk Speciality)":{"ST":65,"MT":120,"LT":140},"Cucumber Tomato":{"ST":20,"MT":35,"LT":55},"Curd Rice":{"ST":55,"MT":100,"LT":120},"Cutlet":{"ST":50,"MT":90,"LT":110},"Cutlet Chat":{"ST":100,"MT":160,"LT":220},"Dabeli Sliders":{"ea":4.0},"Dahi Vada":{"ST":55,"MT":100,"LT":120},"Dahi Vada Cup":{"ea":3.0},"Dal Batti":{"ST":100,"MT":160,"LT":220},"Dal Makhani":{"ST":55,"MT":100,"LT":120},"Dondakaya Fry":{"ST":70,"MT":125,"LT":145},"Dry Chilli Paneer":{"ST":70,"MT":125,"LT":145},"Dry Fruit":{"ea":3.5},"Dry Fruit Shrikhand":{"ST":70,"MT":100,"LT":125},"Dry Gobi Manchurian":{"ST":70,"MT":125,"LT":145},"Dry Veg Manchurian pcs":{"ST":65,"MT":120,"LT":135},"Dum Aloo":{"ST":65,"MT":120,"LT":140},"Eggplant Parmesan":{"ST":75,"MT":135,"LT":160},"Eggplant in Garlic Sauce":{"ST":60,"MT":110,"LT":125},"Falafel":{"ea":5.0},"Fansi Corn":{"ST":60,"MT":100,"LT":120},"Fig Walnut":{"ea":3.5},"Frankie":{"ST":60,"MT":130,"LT":180},"Fusion Bhel":{"ST":60,"MT":110,"LT":125},"Garlic Naan":{"ea":3.5},"Garlic Potato":{"ST":55,"MT":100,"LT":120},"Ghughra (Sooji)":{"ea":3.0},"Gobi 65":{"ST":60,"MT":110,"LT":125},"Gobi Manchurian Gravy":{"ST":65,"MT":120,"LT":135},"Gobi Mutter":{"ST":55,"MT":100,"LT":120},"Gujarati Kadhi":{"ST":55,"MT":100,"LT":120},"Gujarati Toor Dal":{"ST":55,"MT":100,"LT":120},"Gujarati Trevati Dal":{"ST":55,"MT":100,"LT":120},"Gulab Angoori Rabdi":{"ST":80,"MT":135,"LT":150},"Gulab Shrikhand":{"ST":70,"MT":100,"LT":125},"Gutti Vankaya":{"ST":70,"MT":125,"LT":145},"Hakka Noodles":{"ST":60,"MT":110,"LT":125},"Hakka Potato":{"ST":55,"MT":100,"LT":120},"Hakka Vegetables":{"ST":55,"MT":100,"LT":120},"Harabhara Kabab":{"ST":50,"MT":90,"LT":110},"Harabhara Patties":{"ST":60,"MT":110,"LT":125},"Hariyali Fried Rice":{"ST":55,"MT":100,"LT":120},"Hariyali Noodle with Paneer":{"ST":65,"MT":120,"LT":135},"Hot & Sour Vegetable":{"ST":70,"MT":125,"LT":145},"Idli Sambhar":{"ST":60,"LT":110},"Jeera Rice":{"ST":40,"MT":60,"LT":80},"Kaju Potato Roll":{"ST":60,"MT":110,"LT":125},"Kashmiri Baingan":{"ST":65,"MT":120,"LT":140},"Khaman Dhokla":{"ST":55,"MT":100,"LT":120},"Kuttu":{"ST":55,"MT":100,"LT":120},"Lasooni Gobi":{"ST":60,"MT":110,"LT":125},"Lemon Rice":{"ST":55,"MT":100,"LT":120},"Lilva Kachori":{"ST":50,"MT":90,"LT":110},"Lychee Makhani":{"ST":70,"MT":125,"LT":145},"Lychee Rabdi":{"ST":80,"MT":135,"LT":150},"Malai Kofta":{"ST":65,"MT":120,"LT":140},"Manchow Soup":{"ea":4.0},"Mango":{"ea":3.5},"Mango Matho":{"ST":70,"MT":100,"LT":125},"Mango Rice Kheer":{"ST":70,"MT":100,"LT":125},"Masala Idli":{"ST":55,"MT":100,"LT":120},"Masala Pulao":{"ST":65,"MT":120,"LT":135},"Masala Tindora":{"ST":75,"MT":135,"LT":150},"Mawa Gulab Jamun":{"ea":2.5},"Medu Vada Sambhar":{"ST":60,"LT":110},"Methi Malai Mutter":{"ST":65,"MT":120,"LT":140},"Mexican Fried Rice":{"ST":60,"MT":110,"LT":130},"Mexican Rolls":{"ST":60,"MT":130,"LT":180},"Mexican Samosa":{"ST":60,"MT":110,"LT":130},"Minestrone Soup (7 oz cup)":{"ea":4.0},"Mini Jamun in Rabdi":{"ST":80,"MT":135,"LT":150},"Mini Mawa Jamun":{"ea":1.5},"Mirch Pakoda Dry Masala":{"ST":60,"MT":110,"LT":125},"Mirch Pakoda with Stuffed Potato":{"ST":60,"MT":110,"LT":125},"Mix Kathor":{"ST":55,"MT":100,"LT":120},"Mix Veg Pulao":{"ST":55,"MT":100,"LT":120},"Mohanthal":{"ea":16.0},"Moong Dal":{"ea":14.0},"Moong Dal Dhokla":{"ST":60,"MT":110,"LT":125},"Moong Dal Kachori":{"ST":50,"MT":90,"LT":110},"Moru Kolambu":{"ST":55,"MT":100,"LT":120},"Motichur":{"ea":2.0},"Nariyal Patties":{"ST":60,"MT":110,"LT":125},"Navratna Korma":{"ST":65,"MT":120,"LT":140},"Noodles with Rice":{"ST":55,"MT":100,"LT":120},"Onion & Tomato":{"ST":20,"MT":35,"LT":55},"Palak Corn Chana":{"ST":55,"MT":100,"LT":120},"Palak Dal":{"ST":55,"MT":100,"LT":120},"Palak Paneer":{"ST":70,"MT":125,"LT":145},"Palak Puri":{"ea":2.0},"Paneer Bhurji":{"ST":75,"MT":135,"LT":150},"Paneer Butter Masala":{"ST":70,"MT":125,"LT":145},"Paneer Corn Kabab":{"ST":60,"MT":110,"LT":125},"Paneer Enchilada Salsa Mole / Verde":{"ST":75,"MT":135,"LT":160},"Paneer Kathi Roll":{"ST":75,"MT":150,"LT":225},"Paneer Lababdar":{"ST":70,"MT":125,"LT":145},"Paneer Makhani":{"ST":70,"MT":125,"LT":145},"Paneer Mix Veg":{"ST":60,"MT":110,"LT":125},"Paneer Pakoda":{"ST":65,"MT":120,"LT":135},"Paneer Pasanda":{"ST":75,"MT":135,"LT":150},"Paneer Tikka Masala":{"ST":70,"MT":125,"LT":145},"Pasta Salad":{"ST":60,"MT":110,"LT":130},"Patra":{"ST":55,"MT":100,"LT":120},"Pav Bhaji (Breads 30/50/90)":{"ST":100,"MT":160,"LT":220},"Payasam":{"ST":70,"MT":100,"LT":125},"Peas Pulao":{"ST":55,"MT":100,"LT":120},"Perugu Vada":{"ST":55,"MT":100,"LT":120},"Pineapple":{"ST":20,"MT":35,"LT":55},"Pineapple Fried Rice":{"ST":55,"MT":100,"LT":120},"Pineapple Rava Kesari":{"ea":14.0},"Plain Paratha":{"ea":2.5},"Plain Rabdi":{"ST":80,"MT":135,"LT":150},"Plain Rice":{"ST":40,"MT":60,"LT":80},"Plain Rice Kheer":{"ST":70,"MT":100,"LT":125},"Plain Toor Dal Tadka":{"ST":55,"MT":100,"LT":120},"Poha":{"ST":55,"MT":80,"LT":110},"Pongal":{"ST":70,"MT":125,"LT":145},"Potato Curry":{"ST":55,"MT":100,"LT":120},"Potato Subzi Dry / Gravy":{"ST":60,"MT":95,"LT":120},"Puran Poli":{"ea":4.0},"Puri":{"ea":0.5},"Puri Batata Bhaji with Dahi":{"ST":100,"MT":145,"LT":245},"Ragda Patties":{"ST":100,"MT":160,"LT":220},"Rajagara / Kuttu Kadhi":{"ST":60,"MT":95,"LT":120},"Rajma":{"ST":55,"MT":100,"LT":120},"Rasgulla":{"ea":1.0},"Rasmalai":{"ea":1.75},"Ringan Batata":{"ST":55,"MT":100,"LT":120},"Roasted Almond":{"ea":3.5},"Rotli":{"ea":1.0},"Sabudana / Rajagara Khichdi":{"ST":60,"MT":95,"LT":120},"Sabudana Vada / Farali Patties":{"ST":60,"MT":95,"LT":120},"Saffron Basundi":{"ST":80,"MT":135,"LT":150},"Saffron Jalebi (per lb)":{"ea":16.0},"Samo / Kuttu":{"ST":60,"MT":95,"LT":120},"Samosa (Medium size)":{"ST":50,"MT":90,"LT":110},"Samosa Chat":{"ST":100,"MT":160,"LT":220},"Sandwich Dhokla":{"ST":60,"MT":110,"LT":125},"Sandwich Platter":{"ST":60,"MT":110,"LT":125},"Sarson Ka Saag":{"ST":65,"MT":120,"LT":140},"Schezwan Noodle":{"ST":65,"MT":120,"LT":135},"Schezwan Rice":{"ST":55,"MT":100,"LT":120},"Schezwan Veggies":{"ST":55,"MT":100,"LT":120},"Sev Khamani":{"ST":60,"MT":110,"LT":125},"Sevaiya Kheer":{"ST":70,"MT":100,"LT":125},"Shahi Dum Aloo":{"ST":70,"MT":125,"LT":145},"Shahi Paneer":{"ST":70,"MT":125,"LT":145},"Sitaphal Basundi":{"ST":80,"MT":135,"LT":150},"Spinach Corn Kababs":{"ST":55,"MT":100,"LT":120},"Spinach Garlic":{"ST":70,"MT":125,"LT":145},"Spring Roll pcs":{"ST":60,"MT":110,"LT":125},"Sprouted Moong Shak":{"ST":60,"MT":100,"LT":120},"Strawberry":{"ea":3.5},"Stuffed Aloo Paratha (yogurt & pickle)":{"ea":5.0},"Stuffed Bread Pakoda":{"ea":3.0},"Stuffed Paneer Paratha (yogurt & pickle)":{"ea":6.0},"Stuffed Ringan Bataka Sambhariya":{"ST":70,"MT":130,"LT":145},"Sukhi Subzi":{"ST":55,"MT":100,"LT":120},"Surti Patties":{"ST":60,"MT":110,"LT":125},"Sweet & Sour Tofu":{"ST":60,"MT":110,"LT":125},"Sweet Corn":{"ST":70,"MT":125,"LT":145},"Tamarind Rice":{"ST":55,"MT":100,"LT":120},"Tandoori Paneer":{"ST":65,"MT":120,"LT":135},"Tandoori Roti":{"ea":2.5},"Tea":{"ea":1.5},"Thai Curry Yellow Gravy":{"ST":60,"MT":110,"LT":125},"Thai Fried Tofu":{"ST":60,"MT":110,"LT":125},"Thai Vegetable Fried Rice":{"ST":60,"MT":110,"LT":125},"Thepla":{"ea":2.0},"Tofu with Spinach":{"ST":60,"MT":110,"LT":125},"Tom Yum with Coconut Milk":{"ea":4.0},"Tomato Rice":{"ST":55,"MT":100,"LT":120},"Tomato Soup":{"ST":70,"MT":125,"LT":145},"Turiya Patra":{"ST":70,"MT":130,"LT":145},"Undhiyu":{"ST":70,"MT":130,"LT":145},"Upma":{"ST":55,"MT":80,"LT":110},"Urad Dal":{"ST":55,"MT":100,"LT":120},"Usal Misal (Chivda, Bread, Tari)":{"ST":100,"MT":145,"LT":245},"Vaal":{"ST":55,"MT":100,"LT":120},"Vadi Papad":{"ST":60,"MT":100,"LT":120},"Vatana Batata Tomato":{"ST":55,"MT":100,"LT":120},"Veg Bake Dish (White Sauce, Spicy)":{"ST":65,"MT":120,"LT":140},"Veg Biryani":{"ST":65,"MT":120,"LT":135},"Veg Enchiladas in Salsa Mole / Verde":{"ST":65,"MT":120,"LT":140},"Veg Jalfrezi":{"ST":55,"MT":100,"LT":120},"Veg Kolhapuri":{"ST":55,"MT":100,"LT":120},"Veg Lasagna":{"ST":75,"MT":135,"LT":160},"Veg Manchurian Gravy":{"ST":60,"MT":110,"LT":125},"Veg Patiyala":{"ST":55,"MT":100,"LT":120},"White Dhokla":{"ST":55,"MT":100,"LT":120},"Yellow Tadka Dal":{"ST":55,"MT":100,"LT":120}};
 const PLNORM={}; Object.keys(PRICELIST).forEach(n=>PLNORM[n.toLowerCase()]=n);
+
+/* ---------- Party Trays per-person packages ---------- */
+const PACKAGES={
+ "Catering Package #1":{p50:13,p100:12,slots:["1 Regular Appetizer (1 pc/person)","Roti or Puri","Jeera Rice or Plain Rice","1 Vegetable","1 Dal or Kadhi","1 Dessert (1 pc/person)","Boondi Raita, Pickle, Salad"]},
+ "Catering Package #2":{p50:15,p100:14,slots:["2 Regular Appetizers (1 pc/person each)","Puri / Naan / Roti (any two)","Jeera Rice or Peas Pulao","1 Vegetable","1 Dal or Kadhi","1 Dessert (1 pc/person)","Boondi Raita, Pickle, Salad"]},
+ "Catering Package #3":{p50:19,p100:17,slots:["Any 2 Appetizers (3 pcs/person total)","Puri / Naan / Roti (any two)","Any Rice / Biryani / Pulao (one)","2 Vegetables (one can be paneer)","1 Dal or Kadhi","1 Dessert (1.5 pc/person)","Boondi Raita, Pickle, Salad"]}
+};
+function pkgPerPerson(name,guests,sur){ const p=PACKAGES[name]; if(!p||!guests) return 0;
+  if(guests>=100) return p.p100; if(guests>=50) return p.p50; return p.p50+(sur||0); }
 const TRAY_SIZES=['ST','MT','LT','SDT','LDT'];
 function traysMode(){return document.body.dataset.mode==='trays';}
 function resolvePrice(name,size){
@@ -442,14 +460,21 @@ function computeTotals(){
   const discFood=food-disc; taxBase+=discFood;   // discounted food is taxable
   let delFee=0;
   if(mode==='trays'){ delFee=parseFloat($('delFee').value)||0; taxBase+=delFee; }
-  const sub=discFood+other+delFee;
+  // per-person package (trays only)
+  const pkgName = mode==='trays' && $('pkgSel') ? $('pkgSel').value : '';
+  const pkgGuests = parseFloat($('pkgGuests') && $('pkgGuests').value)||0;
+  const pkgSur = parseFloat($('pkgSurcharge') && $('pkgSurcharge').value)||0;
+  const pkgPer = pkgPerPerson(pkgName, pkgGuests, pkgSur);
+  const pkgAmt = pkgPer*pkgGuests;
+  taxBase+=pkgAmt;
+  const sub=discFood+other+delFee+pkgAmt;
   const tax=taxBase*((parseFloat($('taxRate').value)||0)/100);
-  const grat=(discFood+other)*((parseFloat($('gratPct').value)||0)/100);
+  const grat=(discFood+other+pkgAmt)*((parseFloat($('gratPct').value)||0)/100);
   const total=sub+tax+grat;
   let paid=0;
   $('pmtBody').querySelectorAll('tr').forEach(tr=>{paid+=parseFloat(tr.querySelector('input').value)||0;});
   const dep = mode==='trays' ? (parseFloat($('hotbox').value)||0) : 0;
-  return {mode,rows,food,disc,discFood,other,delFee,sub,tax,grat,total,paid,bal:total-paid,dep};
+  return {mode,rows,food,disc,discFood,other,delFee,pkgName,pkgGuests,pkgPer,pkgAmt,sub,tax,grat,total,paid,bal:total-paid,dep};
 }
 
 /* ---------- calc (updates the live display) ---------- */
@@ -460,6 +485,7 @@ function calc(){
   $('tFood').textContent=money(t.food);
   $('tDisc').textContent='-'+money(t.disc);
   if($('tOther')) $('tOther').textContent=money(t.other);
+  if($('tPkg')) $('tPkg').textContent=money(t.pkgAmt);
   $('tDel').textContent=money(t.delFee);
   $('tSub').textContent=money(t.sub);
   $('tTax').textContent=money(t.tax);
@@ -469,6 +495,11 @@ function calc(){
   $('tBal').textContent=money(t.bal);
   $('tDep').textContent=money(t.dep);
   const eps=0.0001, show=(id,c)=>{const e=$(id); if(e)e.style.display=c?'flex':'none';};
+  // package label, row, info + included-items list
+  if($('pkgLbl')) $('pkgLbl').textContent = t.pkgName ? t.pkgName.replace('Catering ','') : 'Package';
+  show('rPkg', t.pkgAmt>eps);
+  if($('pkgInfo')) $('pkgInfo').textContent = (t.pkgName && t.pkgGuests) ? (money(t.pkgPer)+' / person × '+t.pkgGuests+(t.pkgGuests<50?'  (under 50 — surcharge applied)':(t.pkgGuests>=100?'  (100+ rate)':'  (50+ rate)'))) : '';
+  if($('pkgSlots')){ const p=PACKAGES[t.pkgName]; $('pkgSlots').innerHTML = (t.pkgName&&p) ? ('<b>'+t.pkgName+' includes:</b> '+p.slots.join(' &middot; ')) : ''; }
   show('rDisc', t.disc>eps);
   show('rOther', t.mode==='catering' && t.other>eps);
   show('rDel', t.delFee>eps);
@@ -516,7 +547,8 @@ function gather(){
   const pmts=[...$('pmtBody').querySelectorAll('tr')].map(tr=>({
     amount:tr.querySelector('input').value, ref:tr.querySelectorAll('input')[1].value }));
   const g={};['docType','cName','cAddr','cPhone','cEmail','eDate','eTime','tDate','tTime',
-    'eGuests','eFood','eService','eSpice','tService','discPct','taxRate','gratPct','delFee','hotbox','notes']
+    'eGuests','eFood','eService','eSpice','tService','discPct','taxRate','gratPct','delFee','hotbox','notes',
+    'pkgSel','pkgGuests','pkgSurcharge']
     .forEach(i=>{if($(i))g[i]=$(i).value;});
   return {id:curId,mode:document.body.dataset.mode,fields:g,items,pmts,savedAt:new Date().toISOString()};
 }
@@ -584,6 +616,7 @@ function exportWord(){
   const row=(l,v,b)=>`<tr><td style="padding:2px 8px;${b?'font-weight:bold;background:#d9e1f2;':''}">${l}</td><td style="padding:2px 8px;text-align:right;${b?'font-weight:bold;background:#d9e1f2;':''}">${v}</td></tr>`;
   let tot='';
   tot+=row('Food Subtotal',money(t.food));
+  if(t.pkgAmt>0.0001) tot+=row(esc2(t.pkgName)+' ('+t.pkgGuests+' guests @ '+money(t.pkgPer)+')',money(t.pkgAmt));
   if(t.disc>0.0001) tot+=row('Food Discount','-'+money(t.disc));
   if(m==='catering'&&t.other>0.0001) tot+=row('Other Charges',money(t.other));
   if(t.delFee>0.0001) tot+=row('Delivery Fee',money(t.delFee));
