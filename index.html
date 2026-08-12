@@ -202,6 +202,7 @@
   <button class="ghost" onclick="duplicateDoc()">⧉ Duplicate</button>
   <button onclick="window.print()">🖨 Print / PDF</button>
   <button onclick="exportWord()">📄 Word</button>
+  <button onclick="saveToOneDrive()">☁ Save to OneDrive</button>
   <button class="ghost" onclick="exportJSON()">⇩ Export</button>
   <button class="ghost" onclick="document.getElementById('importFile').click()">⇧ Import</button>
   <input type="file" id="importFile" accept="application/json" style="display:none" onchange="importJSON(event)">
@@ -609,7 +610,7 @@ function exportJSON(){
   dl(blob,fnameBase()+'.json');
 }
 /* ---------- Word (.doc) export: clean table-based document ---------- */
-function exportWord(){
+function wordHTML(){
   const g=gather().fields, t=computeTotals(), m=t.mode;
   const logoImg=document.querySelector('.ihead img'); const logo=logoImg?logoImg.src:'';
   const esc2=s=>String(s==null?'':s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])).replace(/\n/g,'<br>');
@@ -676,8 +677,40 @@ function exportWord(){
     </tr></table>
     <div style="border-top:2px solid #1f3864;margin-top:14px;padding-top:5px;text-align:center;color:#555;font-size:10px">Bombaytalk Catering Services LLC · New Jersey · Tax 6.625% (NJ) · Thank you for your business</div>
   </div>`;
-  const html=`<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><title>Invoice</title></head><body>${body}</body></html>`;
-  dl(new Blob(['﻿'+html],{type:'application/msword'}), fnameBase()+'.doc');
+  return `<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><title>Invoice</title></head><body>${body}</body></html>`;
+}
+function wordBlob(){ return new Blob(['﻿'+wordHTML()],{type:'application/msword'}); }
+function jsonBlob(){ return new Blob([JSON.stringify(gather(),null,2)],{type:'application/json'}); }
+function exportWord(){ dl(wordBlob(), fnameBase()+'.doc'); }
+
+/* ---------- Save to OneDrive: write into the local OneDrive-synced folder ---------- */
+const BT_DIRKEY='bt_onedrive_dir';
+function _idb(){return new Promise((res,rej)=>{const r=indexedDB.open('bt_fs',1);r.onupgradeneeded=()=>r.result.createObjectStore('kv');r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);});}
+async function _idbGet(k){const db=await _idb();return new Promise(res=>{const t=db.transaction('kv','readonly').objectStore('kv').get(k);t.onsuccess=()=>res(t.result);t.onerror=()=>res(null);});}
+async function _idbSet(k,v){const db=await _idb();return new Promise(res=>{const t=db.transaction('kv','readwrite').objectStore('kv').put(v,k);t.onsuccess=()=>res();t.onerror=()=>res();});}
+async function _perm(h){const o={mode:'readwrite'};if(await h.queryPermission(o)==='granted')return true;if(await h.requestPermission(o)==='granted')return true;return false;}
+async function getRootDir(forcePick){
+  let h = forcePick ? null : await _idbGet(BT_DIRKEY);
+  if(h){ try{ if(await _perm(h)) return h; }catch(e){} }
+  h = await window.showDirectoryPicker({mode:'readwrite',id:'btInvoices'});
+  await _idbSet(BT_DIRKEY,h);
+  return h;
+}
+async function _writeFile(dir,name,blob){ const fh=await dir.getFileHandle(name,{create:true}); const w=await fh.createWritable(); await w.write(blob); await w.close(); }
+async function saveToOneDrive(forcePick){
+  if(!window.showDirectoryPicker){ alert("This browser can't save straight to a folder. Use Word / Export instead, or open the app in Chrome or Edge on desktop."); return; }
+  const g=gather().fields;
+  if(!g.cName || !g.cName.trim()){ alert('Enter a client name first.'); return; }
+  try{
+    const root=await getRootDir(!!forcePick);
+    const btdir=await root.getDirectoryHandle('Bombaytalk Invoices',{create:true});
+    const ev=g.eDate||g.tDate||''; const d=parseDate(ev); const month=d?d.slice(0,7):'Undated';
+    const mdir=await btdir.getDirectoryHandle(month,{create:true});
+    const base=fnameBase();
+    await _writeFile(mdir, base+'.doc', wordBlob());
+    await _writeFile(mdir, base+'.json', jsonBlob());
+    flash('Saved to OneDrive ▸ Bombaytalk Invoices/'+month);
+  }catch(e){ if(e && (e.name==='AbortError')) return; alert('Could not save to the folder: '+((e&&e.message)||e)); }
 }
 function importJSON(e){
   const f=e.target.files[0];if(!f)return;
