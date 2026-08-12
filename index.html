@@ -78,12 +78,19 @@
   .taxchk{transform:scale(1.15)}
 
   /* bottom: payments left, totals right */
-  .bottom{display:grid;grid-template-columns:1fr 1fr;gap:26px;margin-top:18px;align-items:start}
+  .bottom{display:grid;grid-template-columns:1.6fr 1fr;gap:26px;margin-top:18px;align-items:start}
+  .leftcol{display:flex;flex-direction:column;gap:14px}
+  .totwrap{max-width:280px;margin-left:auto;width:100%}
+  .adjust{display:flex;flex-wrap:wrap;gap:6px 10px;justify-content:flex-end;margin-bottom:6px;font-size:11px;color:var(--muted)}
+  .adjust label{display:inline-flex;align-items:center;gap:3px}
+  .adjust input{width:52px;border:1px solid var(--line);border-radius:4px;padding:2px 4px;text-align:right}
+  .sizesel{font-size:12px}
+  body[data-mode="catering"] .sizecol{display:none}
   .pmthead{background:var(--navy);color:#fff;font-weight:bold;padding:7px 10px;border-radius:5px;font-size:13px}
   .pmt table{margin-top:6px}
   .pmt td{border-bottom:1px solid #e3e8f0}
   .tots{border:1px solid var(--line);border-radius:6px;overflow:hidden}
-  .totrow{display:flex;justify-content:space-between;padding:6px 12px;border-bottom:1px solid #eef1f6;font-size:13.5px}
+  .totrow{display:flex;justify-content:space-between;padding:4px 10px;border-bottom:1px solid #eef1f6;font-size:12.5px}
   .totrow span:first-child{color:var(--muted)}
   .totrow .val{font-variant-numeric:tabular-nums;font-weight:600}
   .totrow input{width:78px;text-align:right;border:1px solid var(--line);border-radius:4px;padding:3px}
@@ -194,6 +201,7 @@
   <button class="ghost" onclick="openDrawer()">📁 Saved</button>
   <button class="ghost" onclick="duplicateDoc()">⧉ Duplicate</button>
   <button onclick="window.print()">🖨 Print / PDF</button>
+  <button onclick="exportWord()">📄 Word</button>
   <button class="ghost" onclick="exportJSON()">⇩ Export</button>
   <button class="ghost" onclick="document.getElementById('importFile').click()">⇧ Import</button>
   <input type="file" id="importFile" accept="application/json" style="display:none" onchange="importJSON(event)">
@@ -216,8 +224,6 @@
       <select id="docType" onchange="calc()">
         <option>Invoice</option><option>Proposal</option><option>Estimate</option>
       </select></div>
-    <div><label>Invoice / Ref No.</label><input id="invNo" placeholder="e.g. 2026-014"></div>
-    <div><label>Date</label><input id="invDate" type="date"></div>
   </div>
 
   <!-- CLIENT + EVENT -->
@@ -251,7 +257,8 @@
   <div class="sectionband"><span id="itemsTitle">MENU &amp; PRICING</span><span id="itemsRight"></span></div>
   <table id="itemsTbl">
     <thead><tr>
-      <th style="width:52px">Qty</th>
+      <th style="width:44px">Qty</th>
+      <th class="sizecol" style="width:58px">Size</th>
       <th>Description</th>
       <th class="taxcol" style="width:110px">Category</th>
       <th style="width:90px">Unit Price</th>
@@ -262,40 +269,47 @@
     <tbody id="itemsBody"></tbody>
   </table>
   <button class="addrow hideprint" onclick="addItem()">＋ Add line</button>
+  <div class="note traysonly">Tray sizes — ST: Small Tray · MD: Medium Tray · LT: Large Tray · SDT/MDT/LDT: Small/Medium/Large Deep Tray · HP: Half Pan · FP: Full Pan</div>
 
-  <!-- BOTTOM: payments + totals -->
+  <!-- BOTTOM: payments + notes (left) · compact totals (right) -->
   <div class="bottom">
-    <div class="pmt">
-      <div class="pmthead">PAYMENTS &amp; DEPOSITS</div>
-      <table><thead><tr><th style="width:96px">Amount</th><th>Date / Reference</th><th style="width:24px"></th></tr></thead>
-        <tbody id="pmtBody"></tbody></table>
-      <button class="addrow hideprint" onclick="addPmt()">＋ Add payment</button>
-      <div class="note cateronly">Deposit of 25% due to confirm booking. Balance due 10 business days prior to the event.</div>
-      <div class="note traysonly">Balance due on pickup/delivery. Returnable equipment deposit refunded when hot boxes/igloos are returned.</div>
-      <div class="fld traysonly" style="margin-top:8px"><b>Equip. Deposit</b><input id="hotbox" type="number" min="0" placeholder="Hot boxes / igloos $ (refundable)" oninput="calc()"></div>
+    <div class="leftcol">
+      <div class="pmt">
+        <div class="pmthead">PAYMENTS &amp; DEPOSITS</div>
+        <table><thead><tr><th style="width:96px">Amount</th><th>Date / Reference</th><th style="width:24px" class="hideprint"></th></tr></thead>
+          <tbody id="pmtBody"></tbody></table>
+        <button class="addrow hideprint" onclick="addPmt()">＋ Add payment</button>
+        <div class="note cateronly">Deposit of 25% due to confirm booking. Balance due 10 business days prior to the event.</div>
+        <div class="note traysonly">Balance due on pickup/delivery. Returnable equipment deposit refunded when hot boxes/igloos are returned.</div>
+        <div class="fld traysonly" style="margin-top:8px"><b>Equip. Deposit</b><input id="hotbox" type="number" min="0" placeholder="Hot boxes / igloos $ (refundable)" oninput="calc()"></div>
+      </div>
+      <div class="notesbox">
+        <div class="sectionband"><span>NOTES / SPECIAL INSTRUCTIONS</span></div>
+        <textarea id="notes" placeholder="Allergies, kids' meals, serving times, equipment, venue access, staff parking…"></textarea>
+      </div>
     </div>
 
-    <div class="tots">
-      <div class="totrow"><span>Food Subtotal</span><span class="val" id="tFood">$0.00</span></div>
-      <div class="totrow"><span>Food Discount %</span><span><input id="discPct" type="number" min="0" max="100" step="0.5" value="0" oninput="calc()"> %</span></div>
-      <div class="totrow"><span>Food Discount</span><span class="val" id="tDisc">$0.00</span></div>
-      <div class="totrow cateronly"><span>Other Charges</span><span class="val" id="tOther">$0.00</span></div>
-      <div class="totrow traysonly"><span>Delivery Fee</span><span><input id="delFee" type="number" min="0" step="1" value="0" oninput="calc()"></span></div>
-      <div class="totrow"><span>Subtotal</span><span class="val" id="tSub">$0.00</span></div>
-      <div class="totrow"><span>Tax Rate %</span><span><input id="taxRate" type="number" min="0" step="0.001" value="6.625" oninput="calc()"></span></div>
-      <div class="totrow"><span>Sales Tax</span><span class="val" id="tTax">$0.00</span></div>
-      <div class="totrow"><span>Gratuity %</span><span><input id="gratPct" type="number" min="0" step="0.5" value="0" oninput="calc()"></span></div>
-      <div class="totrow"><span>Gratuity</span><span class="val" id="tGrat">$0.00</span></div>
-      <div class="totrow big"><span>TOTAL</span><span class="val" id="tTotal">$0.00</span></div>
-      <div class="totrow"><span>Paid / Deposits</span><span class="val" id="tPaid">$0.00</span></div>
-      <div class="totrow big"><span>BALANCE DUE</span><span class="val" id="tBal">$0.00</span></div>
-      <div class="totrow traysonly" id="depRow" style="display:none"><span>+ Refundable Equip. Deposit</span><span class="val" id="tDep">$0.00</span></div>
+    <div class="totwrap">
+      <div class="adjust hideprint">
+        <label>Disc <input id="discPct" type="number" min="0" max="100" step="0.5" value="0" oninput="calc()">%</label>
+        <label>Grat <input id="gratPct" type="number" min="0" step="0.5" value="0" oninput="calc()">%</label>
+        <label>Tax <input id="taxRate" type="number" min="0" step="0.001" value="6.625" oninput="calc()">%</label>
+        <label class="traysonly">Deliv $<input id="delFee" type="number" min="0" step="1" value="0" oninput="calc()"></label>
+      </div>
+      <div class="tots">
+        <div class="totrow" id="rFood"><span>Food Subtotal</span><span class="val" id="tFood">$0.00</span></div>
+        <div class="totrow" id="rDisc"><span>Food Discount</span><span class="val" id="tDisc">$0.00</span></div>
+        <div class="totrow cateronly" id="rOther"><span>Other Charges</span><span class="val" id="tOther">$0.00</span></div>
+        <div class="totrow" id="rDel"><span>Delivery Fee</span><span class="val" id="tDel">$0.00</span></div>
+        <div class="totrow" id="rSub"><span>Subtotal</span><span class="val" id="tSub">$0.00</span></div>
+        <div class="totrow" id="rTax"><span>Sales Tax</span><span class="val" id="tTax">$0.00</span></div>
+        <div class="totrow" id="rGrat"><span>Gratuity</span><span class="val" id="tGrat">$0.00</span></div>
+        <div class="totrow big" id="rTotal"><span>TOTAL</span><span class="val" id="tTotal">$0.00</span></div>
+        <div class="totrow" id="rPaid"><span>Paid / Deposits</span><span class="val" id="tPaid">$0.00</span></div>
+        <div class="totrow big" id="rBal"><span>BALANCE DUE</span><span class="val" id="tBal">$0.00</span></div>
+        <div class="totrow" id="rDep"><span>+ Refundable Deposit</span><span class="val" id="tDep">$0.00</span></div>
+      </div>
     </div>
-  </div>
-
-  <div class="notesbox">
-    <div class="sectionband"><span>NOTES / SPECIAL INSTRUCTIONS</span></div>
-    <textarea id="notes" placeholder="Allergies, kids' meals, serving times, equipment, venue access, staff parking…"></textarea>
   </div>
 
   <div class="foot">
@@ -323,17 +337,19 @@ const CAT_TAX={Food:true,Labor:false,Transport:true,Other:true};
 let curId=null;
 
 /* ---------- rows ---------- */
+const SIZES=['','ST','MD','LT','SDT','MDT','LDT','HP','FP'];
 function addItem(d={}){
   const tr=document.createElement('tr');
   const cat=d.category||'Food';
   tr.innerHTML=`
-    <td class="num"><input type="number" min="0" step="1" value="${d.qty??''}" oninput="calc()"></td>
+    <td class="num"><input class="qin" type="number" min="0" step="1" value="${d.qty??''}" oninput="calc()"></td>
+    <td class="sizecol"><select class="sizesel" onchange="calc()">${SIZES.map(s=>`<option value="${s}" ${s===(d.size||'')?'selected':''}>${s||'—'}</option>`).join('')}</select></td>
     <td><textarea rows="1" oninput="grow(this);calc()" placeholder="Dish / item description">${d.desc||''}</textarea></td>
     <td class="taxcol"><select class="catsel" onchange="onCat(this);calc()">${CATS.map(c=>`<option ${c===cat?'selected':''}>${c}</option>`).join('')}</select></td>
-    <td class="num"><input type="number" min="0" step="0.01" value="${d.unitPrice??''}" oninput="calc()"></td>
+    <td class="num"><input class="pin" type="number" min="0" step="0.01" value="${d.unitPrice??''}" oninput="calc()"></td>
     <td class="taxcol" style="text-align:center"><input type="checkbox" class="taxchk" ${ (d.taxable??CAT_TAX[cat])?'checked':''} onchange="calc()"></td>
     <td class="amt" data-amt>$0.00</td>
-    <td><button class="rowdel hideprint" onclick="this.closest('tr').remove();calc()">×</button></td>`;
+    <td class="hideprint"><button class="rowdel" onclick="this.closest('tr').remove();calc()">×</button></td>`;
   $('itemsBody').appendChild(tr);
   grow(tr.querySelector('textarea'));
 }
@@ -350,57 +366,67 @@ function addPmt(d={}){
 }
 function grow(t){t.style.height='auto';t.style.height=(t.scrollHeight)+'px';}
 
-/* ---------- calc ---------- */
-function calc(){
+/* ---------- totals engine (shared by display + exports) ---------- */
+function computeTotals(){
   const mode=document.body.dataset.mode;
-  let food=0,other=0,taxBase=0;
+  let food=0,other=0,taxBase=0; const rows=[];
   $('itemsBody').querySelectorAll('tr').forEach(tr=>{
-    const q=parseFloat(tr.children[0].querySelector('input').value)||0;
-    const p=parseFloat(tr.children[3].querySelector('input').value)||0;
+    const q=parseFloat(tr.querySelector('.qin').value)||0;
+    const p=parseFloat(tr.querySelector('.pin').value)||0;
+    const sizeSel=tr.querySelector('.sizesel');
+    const size=sizeSel?sizeSel.value:'';
+    const desc=tr.querySelector('textarea').value;
     const cat=tr.querySelector('.catsel').value;
     const taxable=tr.querySelector('.taxchk').checked;
     const amt=q*p;
-    tr.querySelector('[data-amt]').textContent=money(amt);
+    rows.push({q,p,size,desc,cat,taxable,amt});
     if(cat==='Food') food+=amt; else other+=amt;
     if(taxable && cat!=='Food') taxBase+=amt;   // food handled after discount
   });
-  const discPct=(parseFloat($('discPct').value)||0)/100;
-  const disc=food*discPct;
-  const discFood=food-disc;
-  taxBase+=discFood;                              // discounted food is taxable
+  const disc=food*((parseFloat($('discPct').value)||0)/100);
+  const discFood=food-disc; taxBase+=discFood;   // discounted food is taxable
   let delFee=0;
   if(mode==='trays'){ delFee=parseFloat($('delFee').value)||0; taxBase+=delFee; }
   const sub=discFood+other+delFee;
-  const taxRate=(parseFloat($('taxRate').value)||0)/100;
-  const tax=taxBase*taxRate;
-  const gratPct=(parseFloat($('gratPct').value)||0)/100;
-  const grat=(discFood+other)*gratPct;            // gratuity on food+labor after discount, not on tax/delivery
+  const tax=taxBase*((parseFloat($('taxRate').value)||0)/100);
+  const grat=(discFood+other)*((parseFloat($('gratPct').value)||0)/100);
   const total=sub+tax+grat;
   let paid=0;
-  $('pmtBody').querySelectorAll('tr').forEach(tr=>{paid+=parseFloat(tr.children[0].querySelector('input').value)||0;});
-  const bal=total-paid;
+  $('pmtBody').querySelectorAll('tr').forEach(tr=>{paid+=parseFloat(tr.querySelector('input').value)||0;});
+  const dep = mode==='trays' ? (parseFloat($('hotbox').value)||0) : 0;
+  return {mode,rows,food,disc,discFood,other,delFee,sub,tax,grat,total,paid,bal:total-paid,dep};
+}
 
-  $('tFood').textContent=money(food);
-  $('tDisc').textContent=(disc>0?'-':'')+money(disc);
-  if($('tOther')) $('tOther').textContent=money(other);
-  $('tSub').textContent=money(sub);
-  $('tTax').textContent=money(tax);
-  $('tGrat').textContent=money(grat);
-  $('tTotal').textContent=money(total);
-  $('tPaid').textContent=money(paid);
-  $('tBal').textContent=money(bal);
-  if(mode==='trays'){
-    const dep=parseFloat($('hotbox').value)||0;
-    $('depRow').style.display=dep>0?'flex':'none';
-    $('tDep').textContent=money(dep);
-  }
-  // header labels
+/* ---------- calc (updates the live display) ---------- */
+function calc(){
+  const t=computeTotals();
+  const trs=$('itemsBody').querySelectorAll('tr');
+  t.rows.forEach((r,i)=>{ const c=trs[i]&&trs[i].querySelector('[data-amt]'); if(c)c.textContent=money(r.amt); });
+  $('tFood').textContent=money(t.food);
+  $('tDisc').textContent='-'+money(t.disc);
+  if($('tOther')) $('tOther').textContent=money(t.other);
+  $('tDel').textContent=money(t.delFee);
+  $('tSub').textContent=money(t.sub);
+  $('tTax').textContent=money(t.tax);
+  $('tGrat').textContent=money(t.grat);
+  $('tTotal').textContent=money(t.total);
+  $('tPaid').textContent=money(t.paid);
+  $('tBal').textContent=money(t.bal);
+  $('tDep').textContent=money(t.dep);
+  const eps=0.0001, show=(id,c)=>{const e=$(id); if(e)e.style.display=c?'flex':'none';};
+  show('rDisc', t.disc>eps);
+  show('rOther', t.mode==='catering' && t.other>eps);
+  show('rDel', t.delFee>eps);
+  show('rSub', (t.disc>eps||t.other>eps||t.delFee>eps));
+  show('rTax', t.tax>eps);
+  show('rGrat', t.grat>eps);
+  show('rPaid', t.paid>eps);
+  show('rDep', t.dep>eps);
   $('docTypeLabel').textContent=$('docType').value;
   const ft=$('eFood').value;
-  $('itemsTitle').textContent = mode==='trays' ? 'PARTY TRAYS — TO GO'
+  $('itemsTitle').textContent = t.mode==='trays' ? 'PARTY TRAYS — TO GO'
       : (ft? ft.toUpperCase()+' — MENU & PRICING' : 'MENU & PRICING');
-  $('itemsRight').textContent = mode==='trays' ? ($('tService').value||'') : ($('eService')?$('eService').value:'');
-  // validation banner
+  $('itemsRight').textContent = t.mode==='trays' ? ($('tService').value||'') : ($('eService')?$('eService').value:'');
   const ok=$('cName').value.trim() && $('itemsBody').querySelector('tr');
   $('warn').classList.toggle('show',!ok);
 }
@@ -416,25 +442,25 @@ function setMode(m){
 /* ---------- new / gather / load ---------- */
 function newDoc(keepMode){
   curId=null;
-  ['invNo','invDate','cName','cAddr','cPhone','cEmail','eDate','eTime','tDate','tTime','notes'].forEach(i=>{if($(i))$(i).value='';});
+  ['cName','cAddr','cPhone','cEmail','eDate','eTime','tDate','tTime','notes'].forEach(i=>{if($(i))$(i).value='';});
   $('eGuests').value=''; $('discPct').value=0; $('gratPct').value=0; $('taxRate').value=6.625;
   if($('delFee'))$('delFee').value=0; if($('hotbox'))$('hotbox').value='';
   $('itemsBody').innerHTML=''; $('pmtBody').innerHTML='';
   addItem(); addPmt();
-  const t=new Date(); $('invDate').value=t.toISOString().slice(0,10);
   calc();
 }
 function gather(){
   const items=[...$('itemsBody').querySelectorAll('tr')].map(tr=>({
-    qty:tr.children[0].querySelector('input').value,
-    desc:tr.children[1].querySelector('textarea').value,
+    qty:tr.querySelector('.qin').value,
+    size:tr.querySelector('.sizesel')?tr.querySelector('.sizesel').value:'',
+    desc:tr.querySelector('textarea').value,
     category:tr.querySelector('.catsel').value,
-    unitPrice:tr.children[3].querySelector('input').value,
+    unitPrice:tr.querySelector('.pin').value,
     taxable:tr.querySelector('.taxchk').checked
   }));
   const pmts=[...$('pmtBody').querySelectorAll('tr')].map(tr=>({
-    amount:tr.children[0].querySelector('input').value, ref:tr.children[1].querySelector('input').value }));
-  const g={};['docType','invNo','invDate','cName','cAddr','cPhone','cEmail','eDate','eTime','tDate','tTime',
+    amount:tr.querySelector('input').value, ref:tr.querySelectorAll('input')[1].value }));
+  const g={};['docType','cName','cAddr','cPhone','cEmail','eDate','eTime','tDate','tTime',
     'eGuests','eFood','eService','eSpice','tService','discPct','taxRate','gratPct','delFee','hotbox','notes']
     .forEach(i=>{if($(i))g[i]=$(i).value;});
   return {id:curId,mode:document.body.dataset.mode,fields:g,items,pmts,savedAt:new Date().toISOString()};
@@ -464,11 +490,11 @@ function saveDoc(){
   flash('Saved ✔');
   renderSaved();
 }
-function duplicateDoc(){curId=null;$('invNo').value='';flash('Duplicated — save as new');}
+function duplicateDoc(){curId=null;flash('Duplicated — hit Save to store as new');}
 function renderSaved(){
   const list=all().sort((a,b)=>b.savedAt.localeCompare(a.savedAt));
   $('savedList').innerHTML = list.length? list.map(d=>{
-    const nm=(d.fields.cName||'(no name)'); const no=d.fields.invNo?(' · '+d.fields.invNo):'';
+    const nm=(d.fields.cName||'(no name)'); const ev=d.fields.eDate||d.fields.tDate||''; const no=ev?(' · '+ev):'';
     const dt=new Date(d.savedAt).toLocaleString();
     return `<div class="svitem"><div class="t">${esc(nm)}${esc(no)}</div>
       <div class="s">${d.mode==='trays'?'Party Trays':'Catering'} · saved ${dt}</div>
@@ -483,11 +509,87 @@ function closeDrawer(){$('drawer').classList.remove('open');$('backdrop').classL
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
 /* ---------- export / import ---------- */
+function parseDate(s){const t=Date.parse(s);if(isNaN(t))return null;const d=new Date(t);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function fnameBase(){
+  const g=gather().fields; const ev=g.eDate||g.tDate||'';
+  const datePart=parseDate(ev)||(ev?ev.replace(/[^0-9A-Za-z]+/g,'-'):'nodate');
+  const nm=(g.cName||'invoice').replace(/[^0-9A-Za-z]+/g,'-');
+  return (datePart+'_'+nm).replace(/^-+|-+$/g,'').replace(/-+/g,'-');
+}
+function dl(blob,name){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),2000);}
 function exportJSON(){
-  const d=gather();
-  const blob=new Blob([JSON.stringify(d,null,2)],{type:'application/json'});
-  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
-  a.download=(d.fields.invNo||d.fields.cName||'invoice').replace(/\s+/g,'_')+'.json';a.click();
+  const blob=new Blob([JSON.stringify(gather(),null,2)],{type:'application/json'});
+  dl(blob,fnameBase()+'.json');
+}
+/* ---------- Word (.doc) export: clean table-based document ---------- */
+function exportWord(){
+  const g=gather().fields, t=computeTotals(), m=t.mode;
+  const logoImg=document.querySelector('.ihead img'); const logo=logoImg?logoImg.src:'';
+  const esc2=s=>String(s==null?'':s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])).replace(/\n/g,'<br>');
+  const row=(l,v,b)=>`<tr><td style="padding:2px 8px;${b?'font-weight:bold;background:#d9e1f2;':''}">${l}</td><td style="padding:2px 8px;text-align:right;${b?'font-weight:bold;background:#d9e1f2;':''}">${v}</td></tr>`;
+  let tot='';
+  tot+=row('Food Subtotal',money(t.food));
+  if(t.disc>0.0001) tot+=row('Food Discount','-'+money(t.disc));
+  if(m==='catering'&&t.other>0.0001) tot+=row('Other Charges',money(t.other));
+  if(t.delFee>0.0001) tot+=row('Delivery Fee',money(t.delFee));
+  if(t.disc>0.0001||t.other>0.0001||t.delFee>0.0001) tot+=row('Subtotal',money(t.sub));
+  if(t.tax>0.0001) tot+=row('Sales Tax',money(t.tax));
+  if(t.grat>0.0001) tot+=row('Gratuity',money(t.grat));
+  tot+=row('TOTAL',money(t.total),true);
+  if(t.paid>0.0001) tot+=row('Paid / Deposits',money(t.paid));
+  tot+=row('BALANCE DUE',money(t.bal),true);
+  if(t.dep>0.0001) tot+=row('+ Refundable Deposit',money(t.dep));
+
+  const sizeHdr = m==='trays' ? '<th style="border:1px solid #999;padding:4px">Size</th>' : '';
+  const itemRows=t.rows.filter(r=>r.desc||r.amt).map(r=>`<tr>
+    <td style="border:1px solid #999;padding:4px;text-align:center">${esc2(r.q||'')}</td>
+    ${m==='trays'?`<td style="border:1px solid #999;padding:4px;text-align:center">${esc2(r.size)}</td>`:''}
+    <td style="border:1px solid #999;padding:4px">${esc2(r.desc)}</td>
+    <td style="border:1px solid #999;padding:4px;text-align:right">${r.p?money(r.p):''}</td>
+    <td style="border:1px solid #999;padding:4px;text-align:right">${r.amt?money(r.amt):''}</td></tr>`).join('');
+
+  const info = m==='trays'
+    ? [['Date Needed',g.tDate],['Pickup/Del. Time',g.tTime],['Guests',g.eGuests],['Service',g.tService]]
+    : [['Event Date',g.eDate],['Event Time',g.eTime],['Guests',g.eGuests],['Food Type',g.eFood],['Service',g.eService],['Spice',g.eSpice]];
+  const infoRows=info.filter(x=>x[1]).map(x=>`<tr><td style="padding:1px 6px;color:#555">${x[0]}</td><td style="padding:1px 6px">${esc2(x[1])}</td></tr>`).join('');
+  const clientRows=[['Client',g.cName],['Address',g.cAddr],['Contact',g.cPhone],['Email',g.cEmail]]
+    .filter(x=>x[1]).map(x=>`<tr><td style="padding:1px 6px;color:#555">${x[0]}</td><td style="padding:1px 6px">${esc2(x[1])}</td></tr>`).join('');
+  const pmtRows=(gather().pmts||[]).filter(p=>p.amount||p.ref).map(p=>`<tr><td style="border:1px solid #999;padding:3px;text-align:right">${p.amount?money(parseFloat(p.amount)):''}</td><td style="border:1px solid #999;padding:3px">${esc2(p.ref)}</td></tr>`).join('');
+
+  const body=`
+  <div style="font-family:Arial;font-size:12px;color:#111">
+    <table style="width:100%"><tr>
+      <td style="width:35%"><img src="${logo}" style="height:60px"></td>
+      <td style="text-align:right"><div style="font-size:16px;font-weight:bold;color:#1f3864">BOMBAYTALK CATERING SERVICES LLC</div>
+        <div style="font-style:italic;color:#555">Catering &amp; Restaurants</div>
+        <div style="color:#b8860b;font-weight:bold">${esc2(g.docType||'Invoice').toUpperCase()}</div></td>
+    </tr></table>
+    <hr style="border:1px solid #1f3864">
+    <table style="width:100%"><tr>
+      <td style="width:55%;vertical-align:top"><table>${clientRows}</table></td>
+      <td style="vertical-align:top"><table>${infoRows}</table></td>
+    </tr></table>
+    <div style="background:#1f3864;color:#fff;font-weight:bold;padding:5px 8px;margin-top:8px">${m==='trays'?'PARTY TRAYS — TO GO':'MENU &amp; PRICING'}</div>
+    <table style="width:100%;border-collapse:collapse;margin-top:4px">
+      <tr style="background:#5b6472;color:#fff">
+        <th style="border:1px solid #999;padding:4px;width:40px">Qty</th>${sizeHdr}
+        <th style="border:1px solid #999;padding:4px;text-align:left">Description</th>
+        <th style="border:1px solid #999;padding:4px;width:70px">Unit Price</th>
+        <th style="border:1px solid #999;padding:4px;width:80px">Amount</th></tr>
+      ${itemRows}
+    </table>
+    <table style="width:100%;margin-top:10px"><tr>
+      <td style="width:55%;vertical-align:top">
+        <div style="background:#1f3864;color:#fff;font-weight:bold;padding:4px 8px">PAYMENTS &amp; DEPOSITS</div>
+        <table style="border-collapse:collapse;margin-top:3px">${pmtRows||'<tr><td style="border:1px solid #999;padding:3px 20px">&nbsp;</td><td style="border:1px solid #999;padding:3px 40px">&nbsp;</td></tr>'}</table>
+        ${g.notes?`<div style="background:#1f3864;color:#fff;font-weight:bold;padding:4px 8px;margin-top:8px">NOTES / SPECIAL INSTRUCTIONS</div><div style="border:1px solid #ccc;padding:6px">${esc2(g.notes)}</div>`:''}
+      </td>
+      <td style="vertical-align:top"><table style="width:100%;border-collapse:collapse">${tot}</table></td>
+    </tr></table>
+    <div style="border-top:2px solid #1f3864;margin-top:14px;padding-top:5px;text-align:center;color:#555;font-size:10px">Bombaytalk Catering Services LLC · New Jersey · Tax 6.625% (NJ) · Thank you for your business</div>
+  </div>`;
+  const html=`<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><title>Invoice</title></head><body>${body}</body></html>`;
+  dl(new Blob(['﻿'+html],{type:'application/msword'}), fnameBase()+'.doc');
 }
 function importJSON(e){
   const f=e.target.files[0];if(!f)return;
