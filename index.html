@@ -269,7 +269,7 @@
     <tbody id="itemsBody"></tbody>
   </table>
   <button class="addrow hideprint" onclick="addItem()">＋ Add line</button>
-  <div class="note traysonly">Tray sizes — ST: Small Tray · MD: Medium Tray · LT: Large Tray · SDT/MDT/LDT: Small/Medium/Large Deep Tray · HP: Half Pan · FP: Full Pan</div>
+  <div class="note traysonly">Tray sizes - ST: Small Tray, MT: Medium Tray, LT: Large Tray, SDT: Small Deep Tray, LDT: Large Deep Tray. Tip: start typing an item name, pick it from the list and choose a size - the price fills in automatically (you can still edit it).</div>
 
   <!-- BOTTOM: payments + notes (left) · compact totals (right) -->
   <div class="bottom">
@@ -337,16 +337,71 @@ const CAT_TAX={Food:true,Labor:false,Transport:true,Other:true};
 let curId=null;
 
 /* ---------- rows ---------- */
-const SIZES=['','ST','MD','LT','SDT','MDT','LDT','HP','FP'];
+const SIZES=['','ST','MT','LT','SDT','LDT'];
+
+/* ---------- Party Trays price catalog (auto-fill prices; editable) ---------- */
+const PRICELIST={"Aloo Tikki Chat":{"ST":43},"American Chopsuey":{"ST":55},"Bombay Grilled Sandwich":{"LT":102,"ST":51},"Bombay Veg Sandwich":{"MT":77},"Burnt Garliv Veg. Fried Rice":{"LT":102},"Chilli Garlic Noodles":{"MT":85},"Chilli Paneer with Gravy":{"MT":85,"ST":55,"LT":111},"Chinese Fusion Bhel":{"LT":102},"Chinese Samosa (30pcs)":{"MT":68},"Chole Bhature":{"ST":77,"MT":111},"Chole Bhature (45pcs)":{"MT":111},"Chole Bhature (75pcs)":{"LT":187},"Dabeli Sliders":{"pcs":3},"Dahi Vada":{"ST":47,"pcs":3},"Dry Chilli Paneer":{"ST":60,"LT":119,"MT":94},"Dry Gobi Manchurian":{"LT":119,"MT":94},"Dry Veg Manchurian":{"MT":85},"Fried Tofu":{"MT":81,"order":13},"Gobi 65":{"MT":77},"Gobi Manchurian Dry":{"LT":119},"Gobi Manchurian Gravy":{"MT":85,"ST":55,"order":13},"Gulab Jamun":{"pcs":2},"Hakka Noodles":{"ST":51,"MT":81,"LT":102,"order":13},"Hariyali Paneer":{"ST":60},"Idli Sambhar":{"LT":94},"Mexican Samosa (20pcs)":{"ST":51},"Naan":{"pcs":3},"Paneer Kathi Rolls":{"MT":102,"ST":55},"Paneer Makhni":{"LT":60},"Paneer Manchurian Gravy":{"LT":119},"Papdi Chat":{"LT":102},"Pav (only)":{"pcs":1},"Pav Bhaji":{"ST":77,"MT":111,"LT":187,"order":13},"Plain White Rice":{"ST":38},"Ras Malai":{"pcs":2},"Rose Falooda with Ice Cream (90ppl)":{"cups":2},"Samosa":{"ST":43,"MT":60},"Samosa Chat":{"MT":111,"LT":187,"order":9,"ST":77},"Sandwich Platter":{"MT":77},"Schezwan Noodles":{"LT":111,"MT":85,"ST":55},"Schezwan Noodles (Deep)":{"LT":94},"Soup":{"LT":102},"Spring Rolls":{"LT":204,"MT":81},"Stuffed Kulcha (90ppl)":{"pcs":3},"Tandoori Paneer":{"LT":115,"MT":85},"Thai Basil Fried Rice":{"LT":85},"Thai Curry":{"LT":102,"MT":81},"Triple Schezwan Fried Rice":{"ST":111},"Vada Pav":{"pcs":3},"Veg Biryani":{"ST":55,"MT":85,"LT":111},"Veg Fried Rice":{"ST":43,"MT":64},"Veg Manchurian Dry":{"LT":111},"Veg Manchurian Gravy":{"LT":102,"order":13,"MT":81,"ST":51},"Veg Sandwich":{"order":10}};
+const PLNORM={}; Object.keys(PRICELIST).forEach(n=>PLNORM[n.toLowerCase()]=n);
+const TRAY_SIZES=['ST','MT','LT','SDT','LDT'];
+function traysMode(){return document.body.dataset.mode==='trays';}
+function resolvePrice(name,size){
+  const canon=PLNORM[(name||'').trim().toLowerCase()]; if(!canon) return null;
+  const e=PRICELIST[canon], keys=Object.keys(e);
+  if(size && e[size]!=null) return {price:e[size],size};
+  if(keys.length===1){const k=keys[0]; return {price:e[k],size:TRAY_SIZES.includes(k)?k:''};}
+  return null;   // multiple sizes: wait for a size pick
+}
+function autofill(tr){
+  if(!tr||!traysMode()) return;
+  const ta=tr.querySelector('.desc'), sel=tr.querySelector('.sizesel'), pin=tr.querySelector('.pin');
+  if(!ta||!pin) return;
+  const r=resolvePrice(ta.value, sel?sel.value:''); if(!r) return;
+  if(r.size && sel && !sel.value) sel.value=r.size;
+  if(pin.value==='' || pin.dataset.auto==='1'){ pin.value=r.price; pin.dataset.auto='1'; }
+}
+function descChanged(ta){ autofill(ta.closest('tr')); acShow(ta); calc(); }
+function sizeChanged(sel){ autofill(sel.closest('tr')); calc(); }
+function priceEdited(pin){ pin.dataset.auto=''; calc(); }
+
+/* lightweight autocomplete (Party Trays items) */
+let acBox=null;
+function ensureAc(){ if(acBox) return;
+  acBox=document.createElement('div'); acBox.id='acbox';
+  acBox.style.cssText='position:absolute;z-index:120;background:#fff;border:1px solid #c9d2e0;border-radius:6px;box-shadow:0 6px 18px rgba(0,0,0,.15);max-height:200px;overflow:auto;font-size:12.5px;display:none';
+  document.body.appendChild(acBox);
+}
+function acShow(ta){
+  ensureAc();
+  if(!traysMode()){ acHide(); return; }
+  const q=(ta.value||'').trim().toLowerCase();
+  if(q.length<1){ acHide(); return; }
+  const names=Object.keys(PRICELIST).filter(n=>n.toLowerCase().includes(q)).slice(0,8);
+  if(!names.length || (names.length===1 && names[0].toLowerCase()===q)){ acHide(); return; }
+  acBox.innerHTML=names.map(n=>{
+    const e=PRICELIST[n], pr=Object.keys(e).map(k=>k+' $'+e[k]).join('  ');
+    return `<div style="padding:6px 10px;cursor:pointer;border-bottom:1px solid #eef1f6" onmousedown="pickItem(this)" data-n="${n.replace(/"/g,'&quot;')}"><b>${n}</b> <span style="color:#5a6472">${pr}</span></div>`;
+  }).join('');
+  const r=ta.getBoundingClientRect();
+  acBox.style.left=(r.left+window.scrollX)+'px';
+  acBox.style.top=(r.bottom+window.scrollY)+'px';
+  acBox.style.width=Math.max(r.width,250)+'px';
+  acBox.style.display='block'; acBox._ta=ta;
+}
+function acHide(){ if(acBox) acBox.style.display='none'; }
+function acHideSoon(){ setTimeout(acHide,150); }
+function pickItem(el){
+  const ta=acBox&&acBox._ta; if(!ta) return;
+  ta.value=el.getAttribute('data-n'); grow(ta); autofill(ta.closest('tr')); acHide(); calc();
+}
 function addItem(d={}){
   const tr=document.createElement('tr');
   const cat=d.category||'Food';
   tr.innerHTML=`
     <td class="num"><input class="qin" type="number" min="0" step="1" value="${d.qty??''}" oninput="calc()"></td>
-    <td class="sizecol"><select class="sizesel" onchange="calc()">${SIZES.map(s=>`<option value="${s}" ${s===(d.size||'')?'selected':''}>${s||'—'}</option>`).join('')}</select></td>
-    <td><textarea rows="1" oninput="grow(this);calc()" placeholder="Dish / item description">${d.desc||''}</textarea></td>
+    <td class="sizecol"><select class="sizesel" onchange="sizeChanged(this)">${SIZES.map(s=>`<option value="${s}" ${s===(d.size||'')?'selected':''}>${s||'—'}</option>`).join('')}</select></td>
+    <td style="position:relative"><textarea class="desc" rows="1" oninput="grow(this);descChanged(this)" onblur="acHideSoon()" placeholder="Dish / item description">${d.desc||''}</textarea></td>
     <td class="taxcol"><select class="catsel" onchange="onCat(this);calc()">${CATS.map(c=>`<option ${c===cat?'selected':''}>${c}</option>`).join('')}</select></td>
-    <td class="num"><input class="pin" type="number" min="0" step="0.01" value="${d.unitPrice??''}" oninput="calc()"></td>
+    <td class="num"><input class="pin" type="number" min="0" step="0.01" value="${d.unitPrice??''}" oninput="priceEdited(this)"></td>
     <td class="taxcol" style="text-align:center"><input type="checkbox" class="taxchk" ${ (d.taxable??CAT_TAX[cat])?'checked':''} onchange="calc()"></td>
     <td class="amt" data-amt>$0.00</td>
     <td class="hideprint"><button class="rowdel" onclick="this.closest('tr').remove();calc()">×</button></td>`;
