@@ -1350,32 +1350,48 @@ body.kitchen .pkgbar, body.kitchen .bottom .totwrap, body.kitchen .pmt, body.kit
 body.kitchen .addbar, body.kitchen #itemsEmpty, body.kitchen .note, body.kitchen #warn, body.kitchen #webRefLbl,
 body.kitchen .fld:has(#cAddr), body.kitchen .fld:has(#cEmail), body.kitchen .ihead .co .tag{display:none!important}
 body.kitchen .bottom{grid-template-columns:1fr;margin-top:10px}
-body.kitchen #itemsTbl td:nth-child(3) textarea{font-size:16px;font-weight:500}
-body.kitchen #itemsTbl td:nth-child(1) input{font-size:16px;font-weight:600;text-align:center}
-body.kitchen #itemsTbl td:nth-child(2) select{font-size:15px;font-weight:500}
-body.kitchen #itemsTbl th{font-size:12px}
+/* kitchen copy: black only, light weights; only food + quantities semi-bold */
+body.kitchen .paper, body.kitchen .paper *{color:#000!important}
+body.kitchen .paper *{font-weight:400!important}
+body.kitchen .ihead img, body.kitchen .ihead .co h1, body.kitchen .ihead .co .tag{display:none!important}
+body.kitchen .ihead{border-bottom:1px solid #000;padding-bottom:6px;justify-content:flex-end}
+body.kitchen .ihead .co .doctype{font-size:15px;letter-spacing:1.5px}
+body.kitchen .ihead .co .doctype, body.kitchen .ihead .co .doctype *{font-weight:600!important}
+body.kitchen .sectionband,body.kitchen th,body.kitchen td,body.kitchen .fld,body.kitchen .fld input,body.kitchen .fld select,
+body.kitchen .notesbox textarea,body.kitchen #kitchenGuests,body.kitchen #kitchenSend,body.kitchen #kitchenSend li{border-color:#000!important}
+body.kitchen td,body.kitchen .fld,body.kitchen #kitchenSend li{border-bottom-color:#c8c8c8!important}
+body.kitchen #kitchenSend li:last-child{border-bottom:0}
+body.kitchen .sectionband{font-family:Poppins,Arial,sans-serif;font-size:13px;border-width:1px;padding:5px 10px}
+body.kitchen th{border-top:0;border-bottom:1px solid #000;font-size:11.5px}
+body.kitchen #itemsTbl td:nth-child(3) textarea{font-size:15px;font-weight:600!important}
+body.kitchen #itemsTbl td:nth-child(1) input{font-size:15px;font-weight:600!important;text-align:center}
+body.kitchen #itemsTbl td:nth-child(2) select{font-size:14px}
 body.kitchen #itemsTbl tr.optrow{display:none!important}
-body.kitchen .fld b{font-size:13px}
-body.kitchen .fld input,body.kitchen .fld select{font-size:15px;font-weight:500}
-body.kitchen .notesbox textarea{font-size:15px;min-height:70px}
+body.kitchen .fld b{font-size:12.5px}
+body.kitchen .fld input,body.kitchen .fld select{font-size:14px}
+body.kitchen .notesbox textarea{font-size:14.5px;min-height:60px}
 body.kitchen #kitchenGuests{display:block}
 body.kitchen #kitchenSend.has{display:block}
+body.kitchen .fld.konly{display:flex!important}
+.fld.konly{display:none!important}
+.fld.konly input{font-weight:600}
 body.kitchen .grid2 .fld input,body.kitchen .grid2 .fld select{max-width:none!important;width:0;flex:1 1 auto;min-width:0}
 .grid2>.fld{min-width:0}
 body.kitchen #itemsTbl td:nth-child(2) select{min-width:58px}
-#kitchenGuests{display:none;margin:4px 0 2px;font-family:Lora,Georgia,serif;font-size:17px;color:#1F3D2B;font-weight:600;border:1px solid #1F3D2B;border-radius:6px;padding:7px 12px;text-align:center}
-#kitchenGuests small{font-family:Poppins,Arial,sans-serif;font-size:14px;color:var(--gold);font-weight:400;margin-left:10px}
-#kitchenSend{display:none;margin:14px 0 4px;border:1px solid var(--gold);border-radius:6px;padding:8px 14px 10px}
-#kitchenSend h4{margin:0 0 6px;font-family:Lora,Georgia,serif;font-size:14px;letter-spacing:1.2px;color:#1F3D2B;font-weight:600}
+#kitchenGuests{display:none;margin:4px 0 2px;font-size:14.5px;border:1px solid #000;border-radius:6px;padding:7px 12px;text-align:center}
+#kitchenGuests .kt{font-weight:600!important}
+#kitchenGuests .sep{margin:0 8px}
+#kitchenSend{display:none;margin:14px 0 4px;border:1px solid #000;border-radius:6px;padding:8px 14px 10px}
+#kitchenSend h4{margin:0 0 6px;font-size:12.5px;letter-spacing:1.2px}
 #kitchenSend ul{margin:0;padding:0;list-style:none}
-#kitchenSend li{font-size:15px;padding:5px 0;border-bottom:1px solid #ECE5D5;display:flex;gap:10px}
+#kitchenSend li{font-size:14.5px;padding:4px 0;border-bottom:1px solid #ddd;display:flex;gap:10px}
 #kitchenSend li:last-child{border-bottom:0}
-#kitchenSend li::before{content:'☐';color:#1F3D2B}
-#kitchenSend li b{font-weight:600;min-width:34px;text-align:right}
-@media print{ #kitchenSend{break-inside:avoid;-webkit-print-color-adjust:exact;print-color-adjust:exact} }
+#kitchenSend li::before{content:'\u2610'}
+#kitchenSend li b{min-width:34px;text-align:right}
+@media print{ #kitchenSend{break-inside:avoid} body.kitchen .fld.konly input{border:0!important} }
 .modeswitch #mKitchen.active{background:#fff;color:#1F3D2B}
 @media (max-width:640px){ body.kitchen #itemsTbl tr:not(.optrow){grid-template-columns:62px 74px 1fr 40px} }
-@media print{ body.kitchen .paper{font-size:14px} body.kitchen .foot{display:none} }
+@media print{ body.kitchen .paper{font-size:13.5px} body.kitchen .foot{display:none} }
 `;
   document.head.appendChild(st);
   // Kitchen Order tab next to Catering / Party Trays
@@ -1384,13 +1400,32 @@ body.kitchen #itemsTbl td:nth-child(2) select{min-width:58px}
   // big guest / date line for the kitchen copy
   const it=$('itemsTbl');
   if(it && !$('kitchenGuests')){ const d=document.createElement('div'); d.id='kitchenGuests'; it.parentNode.insertBefore(d,it); }
+  const gr=document.querySelector('.grid2');
+  if(gr && !$('kTime')){ const f=document.createElement('div'); f.className='fld konly'; f.innerHTML='<b>Kitchen Ready</b><input id="kTime" placeholder="e.g. 3:30 PM" oninput="btKitchenLine()">';
+    gr.insertBefore(f, $('eTime').closest('.fld')); }
   if(it && !$('kitchenSend')){ const k=document.createElement('div'); k.id='kitchenSend'; it.parentNode.insertBefore(k,it.nextSibling); }
 })();
+function btMin(t){ const m=String(t||'').trim().match(/^(\d{1,2})(?::(\d{2}))?\s*([ap])\.?m?\.?$/i)||String(t||'').trim().match(/^(\d{1,2}):(\d{2})()$/);
+  if(!m) return null; let h=+m[1]%12, mi=+(m[2]||0); if(!m[3]) h=+m[1]; else if(/p/i.test(m[3])) h+=12; return h*60+mi; }
+function btFmt(x){ x=((x%1440)+1440)%1440; const h=Math.floor(x/60), mi=x%60; return ((h+11)%12+1)+':'+String(mi).padStart(2,'0')+' '+(h<12?'AM':'PM'); }
+function btKitchenKind(m){ const sv=m==='trays'?$('tService').value:''; return m!=='trays'?'Event':(/delivery/i.test(sv)?'Delivery':(/pickup/i.test(sv)?'Pickup':'Pickup / Delivery')); }
+function btKitchenSuggest(){
+  const m=document.body.dataset.mode, tm=m==='trays'?$('tTime').value:$('eTime').value, x=btMin(tm);
+  if(!$('kTime').value && x!==null){ const k=btKitchenKind(m); $('kTime').value=btFmt(x-(k==='Pickup'?30:90)); }
+}
 function btKitchenLine(){
-  const m=document.body.dataset.mode, g=$('eGuests').value||'—';
+  const m=document.body.dataset.mode, g=$('eGuests').value||'\u2014';
   const dt=m==='trays'?$('tDate').value:$('eDate').value, tm=m==='trays'?$('tTime').value:$('eTime').value;
-  const sv=m==='trays'?$('tService').value:[$('eService').value,$('eFood').value,$('eSpice').value].filter(Boolean).join(' · ');
-  $('kitchenGuests').innerHTML=esc(g)+' guests<small>'+esc([dt,tm,sv].filter(Boolean).join(' · '))+'</small>';
+  const sv=m==='trays'?$('tService').value:[$('eService').value,$('eFood').value,$('eSpice').value].filter(Boolean).join(' \u00b7 ');
+  const kind=btKitchenKind(m), kt=$('kTime').value;
+  const parts=[];
+  if(kt) parts.push('<span class="kt">Kitchen ready '+esc(kt)+'</span>');
+  if(tm) parts.push(esc(kind)+' '+esc(tm));
+  if(dt) parts.push(esc(dt));
+  parts.push(esc(g)+' guests');
+  if(sv) parts.push(esc(sv));
+  $('kitchenGuests').innerHTML=parts.join('<span class="sep">\u00b7</span>');
+  const lb=$('tTime')&&$('tTime').closest('.fld').querySelector('b'); if(lb) lb.textContent=document.body.classList.contains('kitchen')&&m==='trays'?kind+' Time':'Pickup/Del. Time';
   btKitchenSend(m);
 }
 function btKitchenSend(m){
@@ -1401,7 +1436,7 @@ function btKitchenSend(m){
   });
   const hb=$('hotbox'); if(m==='trays'&&hb&&+hb.value>0) L.push(['','Hot boxes / igloos (refundable deposit taken)']);
   const sv=m==='trays'?$('tService').value:$('eService').value;
-  if(sv&&!/pickup/i.test(sv)&&!L.some(x=>x[1].toLowerCase().indexOf(sv.toLowerCase())>=0)) L.push(['',sv]);
+  if(sv&&/setup|service/i.test(sv)&&!L.some(x=>x[1].toLowerCase().indexOf(sv.toLowerCase())>=0)) L.push(['',sv]);
   const box=$('kitchenSend');
   box.innerHTML=L.length?'<h4>SEND WITH THE ORDER</h4><ul>'+L.map(x=>'<li><b>'+esc(x[0]?x[0]+' ×':'')+'</b><span>'+esc(x[1])+'</span></li>').join('')+'</ul>':'';
   box.classList.toggle('has',L.length>0);
@@ -1413,8 +1448,8 @@ function toggleKitchen(on){
   const m=document.body.dataset.mode;
   $('mCater').classList.toggle('active',!k&&m==='catering'); $('mTrays').classList.toggle('active',!k&&m==='trays');
   $('docTypeLabel').textContent=k?'KITCHEN ORDER':$('docType').value;
-  if(k){ stripBlank(); btKitchenLine(); if(!$('itemsBody').querySelector('tr')) flash('No items on this order yet'); }
-  else calc();
+  if(k){ stripBlank(); btKitchenSuggest(); btKitchenLine(); if(!$('itemsBody').querySelector('tr')) flash('No items on this order yet'); }
+  else { calc(); btKitchenLine(); }
 }
 const _btFlashK=window.flash;
 window.flash=function(m){ _btFlashK(m); try{ document.body.lastElementChild.classList.add('bt-toast'); }catch(e){} };
@@ -1424,7 +1459,11 @@ window.setMode=function(m){ if(document.body.classList.contains('kitchen')){ doc
 const _btCalcK=window.calc;
 window.calc=function(){ _btCalcK(); if(document.body.classList.contains('kitchen')){ $('docTypeLabel').textContent='KITCHEN ORDER'; btKitchenLine(); } };
 const _btNewDocK=window.newDoc;
-window.newDoc=function(){ if(document.body.classList.contains('kitchen')) toggleKitchen(false); _btNewDocK(); };
+window.newDoc=function(){ if(document.body.classList.contains('kitchen')) toggleKitchen(false); if($('kTime')) $('kTime').value=''; _btNewDocK(); };
+const _btGatherK=window.gather;
+window.gather=function(){ const d=_btGatherK(); if(d&&d.fields&&$('kTime')) d.fields.kTime=$('kTime').value; return d; };
+const _btLoadK=window.load;
+window.load=function(doc){ if($('kTime')) $('kTime').value=''; return _btLoadK.apply(this,arguments); };
 </script>
 </body>
 </html>
