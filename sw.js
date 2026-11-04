@@ -1,5 +1,5 @@
 /* Bombaytalk Invoice App - service worker (network-first so updates appear immediately) */
-const CACHE = 'bt-invoice-v2';
+const CACHE = 'bt-invoice-v3';
 const ASSETS = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', e => {

@@ -155,40 +155,75 @@
     tr{page-break-inside:avoid}
     .paper{font-size:12px}
   }
+
+.who{color:#cfd8ea;font-size:12px;margin-left:auto}
+.invno{color:#1f3864;margin-left:6px}
+.invdate{font-size:12px;color:#5a6472;margin-top:2px}
+.empty{border:1px dashed #c9d2e0;border-radius:6px;padding:12px;color:#5a6472;font-size:13px;text-align:center;margin:6px 0;background:#fafbfd}
+.addbar{display:flex;gap:8px;flex-wrap:wrap}
+.addbar>.addrow,.addbar .optwrap{flex:1 1 200px}
+.optwrap{position:relative}
+.optwrap .addrow{width:100%}
+.optmenu{display:none;position:absolute;left:0;right:0;top:100%;z-index:60;background:#fff;border:1px solid #c9d2e0;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.18);overflow:hidden}
+.optmenu.show{display:block}
+.optmenu div{padding:10px 12px;cursor:pointer;border-bottom:1px solid #eef1f6;font-size:14px}
+.optmenu div:hover{background:#eaf0fb}
+.optmenu small{color:#5a6472}
+select.req.missing,input.req.missing{outline:2px solid #d93025;background:#fff4f4}
+tr.optrow textarea{font-style:italic}
+.drawer .tools{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 10px}
+.drawer .tools input,.drawer .tools select{padding:8px;border:1px solid #c9d2e0;border-radius:6px;font-size:14px;flex:1 1 120px}
+.drawer .svitem .s b{color:#1f3864}
+.pill{display:inline-block;padding:1px 7px;border-radius:999px;font-size:11px;font-weight:bold;background:#eef1f6;color:#1f3864}
+.pill.Open{background:#fff4d6;color:#7a5600}.pill.Paid{background:#e3f4e6;color:#1d6b2c}.pill.Void{background:#f3e0e0;color:#8a1c1c}.pill.Partpaid{background:#e6eefc;color:#1f3864}
+@media print{.empty,.addbar,#webRefLbl{display:none!important}}
+#itemsTbl .qin{min-width:44px}
+@media screen and (max-width:640px){
+ #itemsTbl thead{display:none}
+ #itemsTbl,#itemsTbl tbody{display:block;width:100%}
+ #itemsTbl tr{display:grid;grid-template-columns:62px 74px 1fr 96px;gap:6px 8px;padding:10px 2px;border-bottom:1px solid #e3e7ef;align-items:end}
+ #itemsTbl td{display:block;padding:0!important;border:0!important;width:auto!important;text-align:left}
+ #itemsTbl td:nth-child(3){grid-column:1/4;grid-row:1}
+ #itemsTbl td:nth-child(8){grid-column:4;grid-row:1;text-align:right}
+ #itemsTbl td:nth-child(1){grid-column:1;grid-row:2}
+ #itemsTbl td:nth-child(2){grid-column:2;grid-row:2}
+ #itemsTbl td:nth-child(5){grid-column:3;grid-row:2}
+ #itemsTbl td:nth-child(7){grid-column:4;grid-row:2;text-align:right;font-weight:bold;font-size:15px}
+ #itemsTbl td:nth-child(4){grid-column:1/3;grid-row:3}
+ #itemsTbl td:nth-child(6){grid-column:3/5;grid-row:3;text-align:left}
+ #itemsTbl td:nth-child(1)::before{content:'Qty'}
+ #itemsTbl td:nth-child(2)::before{content:'Size'}
+ #itemsTbl td:nth-child(5)::before{content:'Unit price'}
+ #itemsTbl td:nth-child(7)::before{content:'Amount'}
+ #itemsTbl td:nth-child(4)::before{content:'Category'}
+ #itemsTbl td:nth-child(6)::before{content:'Taxable';margin-right:6px;display:inline}
+ #itemsTbl td::before{display:block;font-size:11px;color:#5a6472;font-weight:normal;margin-bottom:2px}
+ #itemsTbl textarea{font-size:16px;width:100%}
+ #itemsTbl input,#itemsTbl select{font-size:16px;width:100%;box-sizing:border-box}
+ #itemsTbl .taxchk{width:auto}
+ #itemsTbl .qin,#itemsTbl .pin,#itemsTbl select{border:1px solid #c9d2e0!important;border-radius:6px;padding:7px 6px;min-height:38px;background:#fff}
+ #itemsTbl .rowdel{display:inline-block!important;visibility:visible!important;opacity:1!important;font-size:20px}
+ body[data-mode=catering] #itemsTbl td:nth-child(2){display:none}
+ body[data-mode=catering] #itemsTbl td:nth-child(5){grid-column:2/4}
+}
 </style>
 </head>
 <body data-mode="catering">
 
-<!-- ============ PASSWORD GATE ============
-     TO CHANGE THE PASSWORD: edit the ONE line marked below (APP_PASSWORD).
-     Note: this keeps casual visitors out. It is light protection, not bank-grade —
-     but no customer data is stored in this file, so nothing private is exposed. -->
-<div id="gate" style="position:fixed;inset:0;z-index:200;background:#1f3864;display:flex;align-items:center;justify-content:center;font-family:Arial,sans-serif">
-  <div style="background:#fff;border-radius:12px;padding:30px 28px;width:300px;text-align:center;box-shadow:0 10px 40px rgba(0,0,0,.35)">
+<!-- ============ SIGN-IN (password is checked on the server; it is NOT stored in this file) ============ -->
+<div id="gate" style="position:fixed;inset:0;z-index:200;background:#1f3864;display:flex;align-items:center;justify-content:center;font-family:Arial,sans-serif;padding:16px">
+  <div style="background:#fff;border-radius:12px;padding:30px 28px;width:320px;max-width:100%;text-align:center;box-shadow:0 10px 40px rgba(0,0,0,.35)">
     <img src="icon-192.png" alt="" style="height:64px;margin-bottom:10px">
-    <h2 style="margin:0 0 4px;color:#1f3864;font-size:18px">Bombaytalk Invoices</h2>
-    <div style="color:#5a6472;font-size:12px;margin-bottom:16px">Enter the access password</div>
-    <input id="gatePw" type="password" placeholder="Password" style="width:100%;padding:10px;border:1px solid #c9d2e0;border-radius:8px;font-size:14px;outline:none" onkeydown="if(event.key==='Enter')tryGate()">
-    <div id="gateErr" style="color:#b00020;font-size:12px;height:16px;margin:8px 0"></div>
-    <button onclick="tryGate()" style="width:100%;padding:11px;background:#1f3864;color:#fff;border:none;border-radius:8px;font-weight:bold;font-size:14px;cursor:pointer">Unlock</button>
-    <label style="display:block;margin-top:12px;font-size:12px;color:#5a6472;cursor:pointer"><input type="checkbox" id="gateRemember" checked> Remember me on this device</label>
+    <h2 style="margin:0 0 4px;color:#1f3864;font-size:19px">Bombaytalk Invoices</h2>
+    <div style="color:#5a6472;font-size:13px;margin-bottom:16px">Sign in to continue</div>
+    <input id="gateName" placeholder="Your name" autocomplete="name" style="width:100%;padding:11px;border:1px solid #c9d2e0;border-radius:8px;font-size:15px;margin-bottom:8px">
+    <input id="gatePw" type="password" placeholder="Office password" style="width:100%;padding:11px;border:1px solid #c9d2e0;border-radius:8px;font-size:15px" onkeydown="if(event.key==='Enter')tryGate()">
+    <div id="gateErr" style="color:#b00020;font-size:13px;min-height:18px;margin:8px 0"></div>
+    <button id="gateBtn" onclick="tryGate()" style="width:100%;padding:12px;background:#1f3864;color:#fff;border:none;border-radius:8px;font-weight:bold;font-size:15px;cursor:pointer">Sign in</button>
+    <label style="display:block;margin-top:12px;font-size:13px;color:#5a6472;cursor:pointer"><input type="checkbox" id="gateRemember" checked> Remember me on this device</label>
   </div>
 </div>
-<script>
-  const APP_PASSWORD = "BTalkCatering!";   // <-- CHANGE THIS to your chosen password
-  function tryGate(){
-    const v=document.getElementById('gatePw').value;
-    if(v===APP_PASSWORD){
-      if(document.getElementById('gateRemember').checked){try{localStorage.setItem('bt_gate_ok','1')}catch(e){}}
-      document.getElementById('gate').style.display='none';
-    } else {
-      document.getElementById('gateErr').textContent='Incorrect password';
-      document.getElementById('gatePw').value='';
-    }
-  }
-  try{ if(localStorage.getItem('bt_gate_ok')==='1'){ document.getElementById('gate').style.display='none'; } }catch(e){}
-</script>
-<!-- ============ END PASSWORD GATE ============ -->
+<!-- ============ END SIGN-IN ============ -->
 
 <div class="toolbar hideprint">
   <span class="brand">BOMBAYTALK · Invoice App</span>
@@ -198,13 +233,16 @@
   </div>
   <button onclick="newDoc()">＋ New</button>
   <button onclick="saveDoc()">💾 Save</button>
-  <button class="ghost" onclick="openDrawer()">📁 Saved</button>
+  <button class="ghost" onclick="openDrawer()">📁 Invoices</button>
+  <button class="ghost" onclick="openOrders()">🌐 Website orders</button>
+  <button class="ghost" onclick="yearExcel()">📊 Year-end Excel</button>
   <button class="ghost" onclick="duplicateDoc()">⧉ Duplicate</button>
-  <button onclick="window.print()">🖨 Print / PDF</button>
+  <button onclick="printDoc()">🖨 Print / PDF</button>
   <button onclick="exportWord()">📄 Word</button>
-  <button onclick="saveToOneDrive()">☁ Save to OneDrive</button>
+  <button class="ghost" onclick="saveToOneDrive()">☁ OneDrive</button>
   <button class="ghost" onclick="exportJSON()">⇩ Export</button>
   <button class="ghost" onclick="document.getElementById('importFile').click()">⇧ Import</button>
+  <span id="who" class="who"></span>
   <input type="file" id="importFile" accept="application/json" style="display:none" onchange="importJSON(event)">
 </div>
 
@@ -216,7 +254,8 @@
     <div class="co">
       <h1>BOMBAYTALK CATERING SERVICES LLC</h1>
       <div class="tag">Catering &amp; Restaurants</div>
-      <div class="doctype"><span id="docTypeLabel">Invoice</span></div>
+      <div class="doctype"><span id="docTypeLabel">Invoice</span> <span id="invNoLbl" class="invno"></span></div>
+      <div class="invdate" id="invDateLbl"></div>
     </div>
   </div>
 
@@ -225,6 +264,8 @@
       <select id="docType" onchange="calc()">
         <option>Invoice</option><option>Proposal</option><option>Estimate</option>
       </select></div>
+    <input type="hidden" id="invNo"><input type="hidden" id="invDate"><input type="hidden" id="webRef">
+    <div id="webRefLbl" class="note hideprint" style="align-self:flex-end"></div>
   </div>
 
   <!-- CLIENT + EVENT -->
@@ -242,14 +283,14 @@
 
     <div class="fld"><b>Email</b><input id="cEmail" placeholder="name@email.com"></div>
     <div class="fld cateronly"><b>Food Type</b>
-      <select id="eFood"><option value="">—</option><option>Vegetarian</option><option>Vegetarian (No Onion/Garlic)</option><option>Non-Veg</option><option>Vegan</option><option>Mixed</option></select></div>
+      <select id="eFood" class="req"><option value="">— choose —</option><option>Vegetarian</option><option>Vegetarian (No Onion/Garlic)</option><option>Non-Veg</option><option>Vegan</option><option>Mixed</option></select></div>
     <div class="fld traysonly"><b>Service</b>
-      <select id="tService"><option>Pickup Only</option><option>Delivery Only</option><option>Delivery + Setup</option><option>Delivery + Service</option><option>Delivery + Service &amp; Setup</option></select></div>
+      <select id="tService" class="req" onchange="calc()"><option value="">— choose —</option><option>Pickup Only</option><option>Delivery Only</option><option>Delivery + Setup</option><option>Delivery + Service</option><option>Delivery + Service &amp; Setup</option></select></div>
 
     <div class="fld cateronly"><b>Service</b>
-      <select id="eService"><option>Buffet</option><option>Family Style</option><option>Plated</option><option>Drop-off</option><option>Full Service</option></select></div>
+      <select id="eService" class="req" onchange="calc()"><option value="">— choose —</option><option>Buffet</option><option>Family Style</option><option>Plated</option><option>Drop-off</option><option>Full Service</option></select></div>
     <div class="fld cateronly"><b>Spice</b>
-      <select id="eSpice"><option>Mild</option><option>Medium</option><option>Spicy</option><option>As Requested</option></select></div>
+      <select id="eSpice" class="req" onchange="calc()"><option value="">— choose —</option><option>Mild</option><option>Medium</option><option>Spicy</option><option>As Requested</option></select></div>
   </div>
 
   <div id="warn" class="warn hideprint">Enter a client name and at least one line item.</div>
@@ -265,7 +306,7 @@
   </div>
   <table id="itemsTbl">
     <thead><tr>
-      <th style="width:44px">Qty</th>
+      <th style="width:58px">Qty</th>
       <th class="sizecol" style="width:58px">Size</th>
       <th>Description</th>
       <th class="taxcol" style="width:110px">Category</th>
@@ -276,7 +317,12 @@
     </tr></thead>
     <tbody id="itemsBody"></tbody>
   </table>
-  <button class="addrow hideprint" onclick="addItem()">＋ Add line</button>
+  <div id="itemsEmpty" class="empty hideprint">No items yet. Tap <b>＋ Add item</b> for each dish, and <b>＋ Add option</b> for utensils, plates, chafing dishes, delivery, setup or staff.</div>
+  <div class="addbar hideprint">
+    <button class="addrow" onclick="addItem({},true)">＋ Add item</button>
+    <div class="optwrap"><button class="addrow" onclick="toggleOpts(event)">＋ Add option</button>
+      <div id="optMenu" class="optmenu"></div></div>
+  </div>
   <div class="note traysonly">Tray sizes - ST: Small Tray, MT: Medium Tray, LT: Large Tray, SDT: Small Deep Tray, LDT: Large Deep Tray. Tip: start typing an item name, pick it from the list and choose a size - the price fills in automatically (you can still edit it).</div>
   <div id="pkgSlots" class="note traysonly" style="margin-top:4px"></div>
 
@@ -287,7 +333,8 @@
         <div class="pmthead">PAYMENTS &amp; DEPOSITS</div>
         <table><thead><tr><th style="width:96px">Amount</th><th>Date / Reference</th><th style="width:24px" class="hideprint"></th></tr></thead>
           <tbody id="pmtBody"></tbody></table>
-        <button class="addrow hideprint" onclick="addPmt()">＋ Add payment</button>
+        <div id="pmtEmpty" class="empty hideprint" style="margin:6px 0">No payments recorded yet.</div>
+        <button class="addrow hideprint" onclick="addPmt({},true)">＋ Add payment</button>
         <div class="note cateronly">Deposit of 25% due to confirm booking. Balance due 10 business days prior to the event.</div>
         <div class="note traysonly">Balance due on pickup/delivery. Returnable equipment deposit refunded when hot boxes/igloos are returned.</div>
         <div class="fld traysonly" style="margin-top:8px"><b>Equip. Deposit</b><input id="hotbox" type="number" min="0" placeholder="Hot boxes / igloos $ (refundable)" oninput="calc()"></div>
@@ -328,13 +375,14 @@
 
  </div><!--paper-->
  <div class="note hint hideprint" style="text-align:center;margin:10px">
-   Tip: fill the yellow-highlighting fields · totals update live · <b>Print / PDF</b> for a clean one-page invoice · <b>Save</b> keeps it in this browser.
+   Add each item as you go · pick every "— choose —" box · <b>Save</b> stores it in the office Invoice Register (shared by all office computers) · <b>Print / PDF</b> for a clean invoice.
  </div>
 </div>
 
 <div class="backdrop" id="backdrop" onclick="closeDrawer()"></div>
 <div class="drawer" id="drawer">
-  <h3>Saved invoices</h3>
+  <h3 id="drawerTitle">Invoices</h3>
+  <div id="drawerTools"></div>
   <div id="savedList"></div>
 </div>
 
@@ -630,12 +678,12 @@ function wordHTML(){
   if(t.dep>0.0001) tot+=row('+ Refundable Deposit',money(t.dep));
 
   const sizeHdr = m==='trays' ? '<th style="border:1px solid #999;padding:4px">Size</th>' : '';
-  const itemRows=t.rows.filter(r=>r.desc||r.amt).map(r=>`<tr>
+  const itemRows=t.rows.filter(r=>r.desc||r.amt||r.opt).map(r=>`<tr>
     <td style="border:1px solid #999;padding:4px;text-align:center">${esc2(r.q||'')}</td>
     ${m==='trays'?`<td style="border:1px solid #999;padding:4px;text-align:center">${esc2(r.size)}</td>`:''}
     <td style="border:1px solid #999;padding:4px">${esc2(r.desc)}</td>
     <td style="border:1px solid #999;padding:4px;text-align:right">${r.p?money(r.p):''}</td>
-    <td style="border:1px solid #999;padding:4px;text-align:right">${r.amt?money(r.amt):''}</td></tr>`).join('');
+    <td style="border:1px solid #999;padding:4px;text-align:right">${r.amt?money(r.amt):(r.opt?'Included':'')}</td></tr>`).join('');
 
   const info = m==='trays'
     ? [['Date Needed',g.tDate],['Pickup/Del. Time',g.tTime],['Guests',g.eGuests],['Service',g.tService]]
@@ -651,7 +699,7 @@ function wordHTML(){
       <td style="width:35%"><img src="${logo}" style="height:60px"></td>
       <td style="text-align:right"><div style="font-size:16px;font-weight:bold;color:#1f3864">BOMBAYTALK CATERING SERVICES LLC</div>
         <div style="font-style:italic;color:#555">Catering &amp; Restaurants</div>
-        <div style="color:#b8860b;font-weight:bold">${esc2(g.docType||'Invoice').toUpperCase()}</div></td>
+        <div style="color:#b8860b;font-weight:bold">${esc2(g.docType||'Invoice').toUpperCase()}${g.invNo?' # '+esc2(g.invNo):''}</div>${g.invDate?'<div style="color:#555">Date: '+esc2(fmtD(g.invDate))+'</div>':''}</td>
     </tr></table>
     <hr style="border:1px solid #1f3864">
     <table style="width:100%"><tr>
@@ -730,6 +778,308 @@ newDoc();
 if('serviceWorker' in navigator){
   window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
 }
+</script>
+<script>
+/* ===== Bombaytalk Invoice App — office register, website orders, add-as-you-go (Nov 2026) ===== */
+const BT_API='https://script.google.com/macros/s/AKfycbyrVi67gzTZrjK_ZgkLPt0paudllVeGYej7knE2AheOtldyljS5fvAYhWlE292VVJCo/exec';
+const BT_OPTIONS=[
+  {n:'Serving utensils (spoons & tongs)',c:'Other'},
+  {n:'Disposable plates, napkins & cutlery',c:'Other',perGuest:true},
+  {n:'Chafing dishes with sterno',c:'Other'},
+  {n:'Delivery',c:'Transport',cater:true},
+  {n:'Setup',c:'Labor'},
+  {n:'Service staff',c:'Labor',hint:'qty = number of staff'},
+  {n:'Live-station chef',c:'Labor'},
+  {n:'Other option…',c:'Other',custom:true}
+];
+let btKey='', btName='';
+try{btKey=localStorage.getItem('bt_key')||sessionStorage.getItem('bt_key')||'';btName=localStorage.getItem('bt_name')||'';}catch(e){}
+
+async function btApi(action,data){
+  const r=await fetch(BT_API,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},
+    body:JSON.stringify(Object.assign({action:'inv_'+action,key:btKey,by:btName},data||{}))});
+  const j=await r.json();
+  if(!j.ok){const e=new Error(j.error||'failed');e.code=j.error;throw e;}
+  return j;
+}
+
+/* ---------- sign-in ---------- */
+async function tryGate(){
+  const pw=$('gatePw').value.trim(), nm=$('gateName').value.trim();
+  if(!nm){$('gateErr').textContent='Please type your name';return;}
+  if(!pw){$('gateErr').textContent='Please type the office password';return;}
+  btKey=pw; btName=nm; $('gateBtn').textContent='Checking…'; $('gateErr').textContent='';
+  try{
+    await btApi('auth');
+    try{ if($('gateRemember').checked){localStorage.setItem('bt_key',pw);} else {sessionStorage.setItem('bt_key',pw);} localStorage.setItem('bt_name',nm);}catch(e){}
+    afterLogin();
+  }catch(e){
+    $('gateErr').textContent = e.code==='bad_key'?'Incorrect password': e.code==='not_set'?'Office password not set up yet (ask MK)':'Could not reach the server. Check the internet and try again.';
+  }
+  $('gateBtn').textContent='Sign in';
+}
+function signOut(){try{localStorage.removeItem('bt_key');sessionStorage.removeItem('bt_key');}catch(e){} location.reload();}
+async function afterLogin(){
+  $('gate').style.display='none';
+  $('who').innerHTML='Signed in: <b>'+esc(btName)+'</b> · <a href="#" style="color:#cfd8ea" onclick="signOut();return false">sign out</a>';
+  await migrateLocal();
+  const q=new URLSearchParams(location.search);
+  if(q.get('inv')) openNo(q.get('inv'));
+  else if(q.get('ref')) fromRef(q.get('ref'));
+}
+async function bootAuth(){
+  if(btName) $('gateName').value=btName;
+  if(!btKey) return;
+  try{ await btApi('auth'); afterLogin(); }catch(e){ if(e.code!=='bad_key'){ $('gateErr').textContent='Could not reach the server. Check the internet and try again.'; } }
+}
+
+/* ---------- add as you go ---------- */
+const _btAddItem0=window.addItem;
+window.addItem=function(d,focus){
+  d=d||{};
+  _btAddItem0(d);
+  const tr=$('itemsBody').lastElementChild;
+  if(d.opt){tr.classList.add('optrow');tr.dataset.opt='1';}
+  tr.querySelector('.rowdel').setAttribute('onclick',"this.closest('tr').remove();calc()");
+  if(focus===true){const t=tr.querySelector('textarea');t&&t.focus();}
+  calc();
+};
+const _btAddPmt0=window.addPmt;
+window.addPmt=function(d,focus){
+  _btAddPmt0(d||{});
+  if(focus===true){const i=$('pmtBody').lastElementChild.querySelector('input');i&&i.focus();}
+  calc();
+};
+function toggleOpts(ev){
+  ev.stopPropagation();
+  const m=$('optMenu'), cater=document.body.dataset.mode==='catering';
+  m.innerHTML=BT_OPTIONS.filter(o=>!o.cater||cater).map((o,i)=>`<div onclick="addOption(${BT_OPTIONS.indexOf(o)})">${esc(o.n)}${o.perGuest?' <small>(per guest)</small>':''}${o.hint?' <small>('+o.hint+')</small>':''}</div>`).join('')
+    +(cater?'':'<div style="cursor:default;background:#fafbfd"><small>Party Trays: delivery fee goes in “Deliv $” and hot boxes in “Equip. Deposit”.</small></div>');
+  m.classList.toggle('show');
+}
+document.addEventListener('click',()=>{const m=$('optMenu');m&&m.classList.remove('show');});
+function addOption(i){
+  const o=BT_OPTIONS[i]; let name=o.n;
+  if(o.custom){name=prompt('Option name (for example: Extra serving table)');if(!name)return;}
+  const g=parseFloat($('eGuests').value)||'';
+  addItem({qty:o.perGuest?(g||''):1,desc:name,category:o.c,taxable:CAT_TAX[o.c],opt:true});
+  const tr=$('itemsBody').lastElementChild; const p=tr.querySelector('.pin'); p.placeholder='0'; p.focus();
+  $('optMenu').classList.remove('show');
+}
+
+/* ---------- totals / checks ---------- */
+const _btCT0=window.computeTotals;
+window.computeTotals=function(){
+  const t=_btCT0(); const trs=$('itemsBody').querySelectorAll('tr');
+  t.rows.forEach((r,i)=>{r.opt=!!(trs[i]&&trs[i].dataset.opt==='1');});
+  return t;
+};
+function btMissing(){
+  const m=document.body.dataset.mode, miss=[];
+  document.querySelectorAll('select.req').forEach(s=>s.classList.remove('missing'));
+  const need=m==='trays'?[['tService','Service (pickup or delivery)']]:[['eFood','Food Type'],['eService','Service'],['eSpice','Spice']];
+  need.forEach(([id,l])=>{if(!$(id).value){miss.push(l);$(id).classList.add('missing');}});
+  if(!$('cName').value.trim()) miss.unshift('Client name');
+  const rows=[...$('itemsBody').querySelectorAll('tr')].filter(tr=>tr.querySelector('textarea').value.trim()||tr.querySelector('.pin').value);
+  if(!rows.length) miss.push('at least one item');
+  rows.forEach(tr=>{const q=tr.querySelector('.qin');if(!q.value){q.classList.add('missing');} else q.classList.remove('missing');});
+  if(rows.some(tr=>!tr.querySelector('.qin').value)) miss.push('quantity on every item');
+  return miss;
+}
+const _btCalc0=window.calc;
+window.calc=function(){
+  _btCalc0();
+  const trs=$('itemsBody').querySelectorAll('tr');
+  trs.forEach(tr=>{ if(tr.dataset.opt==='1'){const c=tr.querySelector('[data-amt]'); if(c && c.textContent==='$0.00') c.textContent='Included';} });
+  if($('itemsEmpty')) $('itemsEmpty').style.display=trs.length?'none':'block';
+  if($('pmtEmpty')) $('pmtEmpty').style.display=$('pmtBody').querySelector('tr')?'none':'block';
+  const no=$('invNo').value; $('invNoLbl').textContent=no?('# '+no):'';
+  $('invDateLbl').textContent=$('invDate').value?('Date: '+fmtD($('invDate').value)):'Not saved yet';
+  $('webRefLbl').textContent=$('webRef').value?('Website order '+$('webRef').value):'';
+  const miss=btMissing(); const w=$('warn');
+  w.textContent = miss.length ? ('Still needed: '+miss.join(' · ')) : '';
+  w.classList.toggle('show',miss.length>0);
+};
+function fmtD(s){const m=String(s).match(/^(\d{4})-(\d{2})-(\d{2})/);return m?(m[2]+'/'+m[3]+'/'+m[1]):s;}
+function stripBlank(){
+  $('itemsBody').querySelectorAll('tr').forEach(tr=>{ if(!tr.querySelector('textarea').value.trim() && !tr.querySelector('.pin').value && tr.dataset.opt!=='1') tr.remove(); });
+  $('pmtBody').querySelectorAll('tr').forEach(tr=>{ const i=tr.querySelectorAll('input'); if(!i[0].value && !i[1].value) tr.remove(); });
+  calc();
+}
+function printDoc(){
+  stripBlank(); const miss=btMissing();
+  if(miss.length){ alert('Before printing, please fill in:\n• '+miss.join('\n• ')); return; }
+  window.print();
+}
+
+/* ---------- new / gather / load ---------- */
+window.newDoc=function(){
+  curId=null;
+  ['cName','cAddr','cPhone','cEmail','eDate','eTime','tDate','tTime','notes','invNo','invDate','webRef','eFood','eService','eSpice','tService','pkgSel','pkgGuests']
+    .forEach(i=>{if($(i))$(i).value='';});
+  $('docType').value='Invoice';
+  $('eGuests').value=''; $('discPct').value=0; $('gratPct').value=0; $('taxRate').value=6.625;
+  if($('delFee'))$('delFee').value=0; if($('hotbox'))$('hotbox').value='';
+  $('itemsBody').innerHTML=''; $('pmtBody').innerHTML='';
+  history.replaceState(null,'',location.pathname);
+  calc();
+};
+const _btGather0=window.gather;
+window.gather=function(){
+  const d=_btGather0(); const trs=$('itemsBody').querySelectorAll('tr');
+  d.items.forEach((it,i)=>{ if(trs[i]&&trs[i].dataset.opt==='1') it.opt=true; });
+  d.items=d.items.filter(it=>it.desc.trim()||it.unitPrice||it.opt);
+  d.pmts=d.pmts.filter(p=>p.amount||p.ref);
+  ['invNo','invDate','webRef'].forEach(i=>d.fields[i]=$(i).value);
+  d.id=d.fields.invNo||curId||null;
+  return d;
+};
+window.load=function(doc){
+  setMode(doc.mode||'catering');
+  const g=doc.fields||{};
+  ['invNo','invDate','webRef','eFood','eService','eSpice','tService'].forEach(i=>{if($(i))$(i).value='';});
+  Object.keys(g).forEach(i=>{if($(i))$(i).value=g[i];});
+  $('itemsBody').innerHTML=''; $('pmtBody').innerHTML='';
+  (doc.items||[]).forEach(it=>{ _btAddItem0(it); const tr=$('itemsBody').lastElementChild; if(it.opt){tr.classList.add('optrow');tr.dataset.opt='1';} autofill(tr); });
+  (doc.pmts||[]).forEach(p=>_btAddPmt0(p));
+  curId=g.invNo||doc.id||null;
+  if(g.invNo) history.replaceState(null,'','?inv='+encodeURIComponent(g.invNo));
+  calc();
+};
+
+/* ---------- save to the office register ---------- */
+let btSaving=false;
+window.saveDoc=async function(){
+  if(btSaving) return;
+  stripBlank();
+  const miss=btMissing();
+  if(miss.length){ alert('Please fill in before saving:\n• '+miss.join('\n• ')); return; }
+  const d=gather(); const t=computeTotals();
+  d.totals={food:t.food,disc:t.disc,other:t.other,delFee:t.delFee,pkgAmt:t.pkgAmt,sub:t.sub,tax:t.tax,grat:t.grat,total:t.total,paid:t.paid,bal:t.bal,dep:t.dep};
+  btSaving=true; flash('Saving…');
+  try{
+    const r=await btApi('save',{doc:d});
+    $('invNo').value=r.no; $('invDate').value=r.invDate; curId=r.no;
+    history.replaceState(null,'','?inv='+encodeURIComponent(r.no));
+    btLocalBackup(Object.assign(d,{id:r.no,fields:Object.assign(d.fields,{invNo:r.no,invDate:r.invDate})}),true);
+    calc(); flash('Saved ✔  '+r.no+' · '+r.status);
+  }catch(e){
+    btLocalBackup(d,false);
+    alert(e.code==='bad_key'?'Your sign-in expired. Please sign in again.':'Could not reach the office register right now. A copy is kept on this computer and will be sent automatically next time you open the app.');
+    if(e.code==='bad_key') signOut();
+  }finally{btSaving=false;}
+};
+window.duplicateDoc=function(){ $('invNo').value=''; $('invDate').value=''; $('webRef').value=''; $('pmtBody').innerHTML=''; curId=null; history.replaceState(null,'',location.pathname); calc(); flash('Copied. Save to give it a new invoice number'); };
+function btLocalBackup(d,synced){
+  try{ const k='bt_invoices_v1'; const list=JSON.parse(localStorage.getItem(k)||'[]');
+    if(!d.id) d.id='id'+Date.now();
+    d.synced=!!synced; d.savedAt=new Date().toISOString();
+    const i=list.findIndex(x=>x.id===d.id || (d.fields.invNo && x.fields && x.fields.invNo===d.fields.invNo));
+    if(i>=0) list[i]=d; else list.push(d);
+    localStorage.setItem(k,JSON.stringify(list.slice(-300)));
+  }catch(e){}
+}
+/* invoices saved in this browser before the register existed → send them once */
+async function migrateLocal(){
+  let list; try{list=JSON.parse(localStorage.getItem('bt_invoices_v1')||'[]');}catch(e){return;}
+  const todo=list.filter(d=>!d.synced && d.fields && (d.fields.cName||'').trim());
+  if(!todo.length) return;
+  let n=0;
+  for(const d of todo){
+    try{
+      if(!d.totals){ load(d); const t=computeTotals(); d.totals={food:t.food,disc:t.disc,other:t.other,delFee:t.delFee,pkgAmt:t.pkgAmt,sub:t.sub,tax:t.tax,grat:t.grat,total:t.total,paid:t.paid,bal:t.bal,dep:t.dep}; }
+      d.items=(d.items||[]).filter(it=>(it.desc||'').trim()||it.unitPrice); d.pmts=(d.pmts||[]).filter(p=>p.amount||p.ref);
+      const r=await btApi('save',{doc:d}); d.synced=true; d.fields.invNo=r.no; d.id=r.no; n++;
+    }catch(e){ break; }
+  }
+  try{localStorage.setItem('bt_invoices_v1',JSON.stringify(list));}catch(e){}
+  newDoc();
+  if(n) flash(n+' invoice'+(n>1?'s':'')+' from this computer added to the office register');
+}
+
+/* ---------- invoice list (shared) ---------- */
+let btList=[];
+window.openDrawer=async function(){
+  $('drawerTitle').textContent='Invoices (all office computers)';
+  $('drawerTools').innerHTML='<div class="tools"><input id="fQ" placeholder="Search name or #" oninput="renderSaved()"><select id="fT" onchange="renderSaved()"><option value="">All types</option><option>Party Trays</option><option>On-site Catering</option></select><select id="fS" onchange="renderSaved()"><option value="">Any status</option><option>Open</option><option>Part paid</option><option>Paid</option><option>Void</option></select></div>';
+  $('savedList').innerHTML='<div class="note">Loading…</div>';
+  $('drawer').classList.add('open');$('backdrop').classList.add('show');
+  try{ btList=(await btApi('list')).rows; renderSaved(); }catch(e){ $('savedList').innerHTML='<div class="note">Could not load the register. Check the internet and try again.</div>'; }
+};
+window.renderSaved=function(){
+  if(!$('fQ')) return;
+  const q=$('fQ').value.trim().toLowerCase(), ty=$('fT').value, st=$('fS').value;
+  const L=btList.filter(r=>(!q||(String(r['Client'])+' '+r['Invoice #']).toLowerCase().includes(q))&&(!ty||r['Type']===ty)&&(!st||r['Status']===st));
+  $('savedList').innerHTML=L.length?L.slice(0,200).map(r=>`<div class="svitem"><div class="t">${esc(r['Client']||'(no name)')} <span class="pill ${String(r['Status']).replace(/\s/g,'')}">${esc(r['Status'])}</span></div>
+    <div class="s"><b>${esc(r['Invoice #'])}</b> · ${esc(r['Type'])} · ${esc(fmtD(r['Service date']||''))} · ${money(+r['Total']||0)}${(+r['Balance']>0.005)?' · due '+money(+r['Balance']):''}</div>
+    <button onclick="openNo('${esc(r['Invoice #'])}')">Open</button>
+    ${r['Status']!=='Void'?`<button class="del" onclick="voidNo('${esc(r['Invoice #'])}')">Void</button>`:''}</div>`).join(''):'<div class="note">No invoices match.</div>';
+};
+async function openNo(no){
+  try{ const r=await btApi('get',{no}); load(r.doc); closeDrawer(); flash('Opened '+no); }catch(e){ alert('Could not open '+no); }
+}
+async function voidNo(no){
+  if(!confirm('Void invoice '+no+'? It stays in the register marked VOID (nothing is deleted).')) return;
+  try{ await btApi('void',{no}); btList=(await btApi('list')).rows; renderSaved(); flash(no+' voided'); }catch(e){ alert('Could not void '+no); }
+}
+
+/* ---------- website orders → invoice ---------- */
+async function openOrders(){
+  $('drawerTitle').textContent='Website orders';
+  $('drawerTools').innerHTML='<div class="note" style="margin-bottom:8px">Pick an order to make (or open) its invoice. Setting an order to <b>Confirmed</b> in the inquiries sheet also makes the invoice automatically.</div>';
+  $('savedList').innerHTML='<div class="note">Loading…</div>';
+  $('drawer').classList.add('open');$('backdrop').classList.add('show');
+  try{
+    const rows=(await btApi('inquiries')).rows;
+    $('savedList').innerHTML=rows.length?rows.map(r=>`<div class="svitem"><div class="t">${esc(r.name||'(no name)')} <span class="pill">${esc(r.status||'')}</span></div>
+      <div class="s">${esc(r.ref)} · received ${esc(r.received||'')} · needed ${esc(fmtD(r.date||''))}${r.guests?' · '+esc(r.guests)+' guests':''} · ${esc(String(r.page||'').replace(/\//g,' ').trim())}</div>
+      <button onclick="fromRef('${esc(r.ref)}')">${r.invoice?'Open '+esc(r.invoice):'Make invoice'}</button></div>`).join(''):'<div class="note">No website orders yet.</div>';
+  }catch(e){ $('savedList').innerHTML='<div class="note">Could not load website orders.</div>'; }
+}
+async function fromRef(ref){
+  flash('Building invoice…');
+  try{ const r=await btApi('fromRef',{ref}); load(r.doc); closeDrawer(); flash('Invoice '+r.doc.fields.invNo+' ready. Check it, add options, Save.'); }
+  catch(e){ alert('Could not build the invoice for '+ref); }
+}
+
+/* ---------- year-end Excel ---------- */
+function btLoadXlsx(){return new Promise((res,rej)=>{ if(window.XLSX) return res();
+  const s=document.createElement('script'); s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'; s.onload=res; s.onerror=rej; document.head.appendChild(s); });}
+async function yearExcel(){
+  const y=prompt('Which year? (all invoices with a service date in that year)', String(new Date().getFullYear()));
+  if(!y) return;
+  flash('Building Excel…');
+  try{
+    await btLoadXlsx();
+    const r=await btApi('export',{year:y.trim()});
+    const H=r.head.filter(h=>h!=='Open'), idx=H.map(h=>r.head.indexOf(h));
+    const rows=r.rows.map(x=>idx.map(i=>x[i])).sort((a,b)=>String(a[H.indexOf('Service date')]).localeCompare(String(b[H.indexOf('Service date')])));
+    const ti=H.indexOf('Type'), si=H.indexOf('Status');
+    const num=['Food subtotal','Package','Discount','Other charges','Delivery','Subtotal','Sales tax','Gratuity','Total','Paid','Balance','Refundable deposit'].map(h=>H.indexOf(h));
+    const sheet=(data)=>{ const ws=XLSX.utils.aoa_to_sheet([H].concat(data)); ws['!cols']=H.map(h=>({wch:h==='Items'||h==='Notes'?50:h==='Client'?24:14}));
+      data.forEach((row,ri)=>num.forEach(ci=>{const c=ws[XLSX.utils.encode_cell({r:ri+1,c:ci})]; if(c){c.t='n';c.v=+c.v||0;c.z='$#,##0.00';}})); ws['!autofilter']={ref:ws['!ref']}; return ws; };
+    const live=rows.filter(x=>x[si]!=='Void');
+    // monthly summary
+    const sumH=['Month','Type','Invoices','Food subtotal','Sales tax','Total','Paid','Balance'], M={};
+    live.forEach(x=>{ const m=String(x[H.indexOf('Service date')]).slice(0,7)||'(no date)'; const k=m+'|'+x[ti];
+      M[k]=M[k]||[m,x[ti],0,0,0,0,0,0]; const a=M[k]; a[2]++; a[3]+=+x[H.indexOf('Food subtotal')]||0; a[4]+=+x[H.indexOf('Sales tax')]||0; a[5]+=+x[H.indexOf('Total')]||0; a[6]+=+x[H.indexOf('Paid')]||0; a[7]+=+x[H.indexOf('Balance')]||0; });
+    const sum=Object.keys(M).sort().map(k=>M[k]);
+    const tot=['YEAR TOTAL','',sum.reduce((a,x)=>a+x[2],0)].concat([3,4,5,6,7].map(i=>sum.reduce((a,x)=>a+x[i],0)));
+    const wsS=XLSX.utils.aoa_to_sheet([sumH].concat(sum,[[],tot])); wsS['!cols']=[{wch:10},{wch:18},{wch:9},{wch:14},{wch:12},{wch:14},{wch:14},{wch:14}];
+    const wb=XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb,wsS,'Monthly summary');
+    XLSX.utils.book_append_sheet(wb,sheet(live),'All invoices (by date)');
+    XLSX.utils.book_append_sheet(wb,sheet(live.filter(x=>x[ti]==='Party Trays')),'Party Trays');
+    XLSX.utils.book_append_sheet(wb,sheet(live.filter(x=>x[ti]==='On-site Catering')),'On-site Catering');
+    XLSX.utils.book_append_sheet(wb,sheet(rows.filter(x=>x[si]==='Void')),'Void');
+    XLSX.writeFile(wb,'Bombaytalk-Invoices-'+y.trim()+'.xlsx');
+  }catch(e){ alert('Could not build the Excel file. Check the internet and try again.'); }
+}
+
+/* ---------- start ---------- */
+newDoc();
+bootAuth();
+
 </script>
 </body>
 </html>
