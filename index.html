@@ -1469,5 +1469,231 @@ window.gather=function(){ const d=_btGatherK(); if(d&&d.fields&&$('kTime')) d.fi
 const _btLoadK=window.load;
 window.load=function(doc){ if($('kTime')) $('kTime').value=''; return _btLoadK.apply(this,arguments); };
 </script>
+<script>
+/* ---------- Packages: pick the package first, then choose a dish for each slot; premium dishes add $/person ---------- */
+const BT_PKGDEF={
+ "Catering Package #1":[
+  {k:'app',l:'Appetizer',n:1,h:'Regular appetizer, 1 pc per person'},
+  {k:'bread',l:'Bread',n:1,h:'Roti or Puri'},
+  {k:'rice',l:'Rice',n:1,h:'Jeera Rice or Plain Rice'},
+  {k:'veg',l:'Vegetable',n:1,h:'1 vegetable'},
+  {k:'dal',l:'Dal / Kadhi',n:1,h:'1 dal or kadhi'},
+  {k:'dessert',l:'Dessert',n:1,h:'1 pc per person'}],
+ "Catering Package #2":[
+  {k:'app',l:'Appetizer',n:2,h:'2 regular appetizers, 1 pc each per person'},
+  {k:'bread',l:'Bread',n:2,h:'Any two: Puri / Naan / Roti'},
+  {k:'rice',l:'Rice',n:1,h:'Jeera Rice or Peas Pulao'},
+  {k:'veg',l:'Vegetable',n:1,h:'1 vegetable'},
+  {k:'dal',l:'Dal / Kadhi',n:1,h:'1 dal or kadhi'},
+  {k:'dessert',l:'Dessert',n:1,h:'1 pc per person'}],
+ "Catering Package #3":[
+  {k:'app',l:'Appetizer',n:2,h:'Any 2 appetizers, 3 pcs per person total'},
+  {k:'bread',l:'Bread',n:2,h:'Any two: Puri / Naan / Roti'},
+  {k:'rice',l:'Rice',n:1,h:'Any rice / biryani / pulao'},
+  {k:'veg',l:'Vegetable',n:2,h:'2 vegetables (one can be paneer)'},
+  {k:'dal',l:'Dal / Kadhi',n:1,h:'1 dal or kadhi'},
+  {k:'dessert',l:'Dessert',n:1,h:'1.5 pc per person'}]
+};
+const BT_PKG_FIXED='Boondi Raita, Pickle, Salad';
+/* menu sections offered for each slot (first = regular) and the regular Small-tray price for that slot */
+const BT_SLOTSEC={
+ app:{sec:['Appetizers','Premium Appetizers','Rolls','Indo-Chinese & Thai','Indo-Mexican & Italian','Appetizers by the Piece'],base:50},
+ bread:{sec:['Breads'],base:null},
+ rice:{sec:['Rice'],base:40},
+ veg:{sec:['North Indian','Gujarati','South Indian','Indo-Chinese & Thai'],base:55},
+ dal:{sec:['Dals & Kadhi'],base:55},
+ dessert:{sec:['Desserts','Sweets by the Piece','Kheer & Shrikhand','Rabdi & Basundi'],base:70}
+};
+let btPkg={pkg:'',slots:[]};   // slots: [{k,l,h,dish,prem}]
+
+/* premium marks (✦) from the live website menu */
+const _btLoadMenuP=window.btLoadMenu;
+window.btLoadMenu=async function(){
+  if(btMenu) return btMenu;
+  const api=window.btApi; let html='';
+  window.btApi=async function(a,d){ const r=await api(a,d); if(a==='menu'&&r) html=r.html||''; return r; };
+  try{ await _btLoadMenuP(); } finally{ window.btApi=api; }
+  try{
+    const doc=new DOMParser().parseFromString(html,'text/html'), T=n=>(n.textContent||'').replace(/\s+/g,' ').trim().toLowerCase();
+    const secPrem={}, rows=[];
+    doc.querySelectorAll('.btc-m details').forEach(d=>{ const s=d.querySelector('summary'); const st=T(s);
+      const nm=st.replace(/✦/g,'').replace(/\d+ items.*$/,'').trim(); secPrem[nm]=st.includes('✦');
+      d.querySelectorAll('div').forEach(r=>{ if(r.children.length&&!r.querySelector('div')&&T(r).includes('✦')) rows.push(T(r)); }); });
+    (btMenu||[]).forEach(s=>{ const sp=!!secPrem[s.sec.toLowerCase()]; s.prem=sp;
+      s.items.forEach(it=>{ const n=it.n.toLowerCase(); it.prem=sp||rows.some(t=>t.includes(n)); }); });
+  }catch(e){}
+  return btMenu;
+};
+function btSecOf(name){ return (btMenu||[]).find(s=>s.sec.toLowerCase()===String(name).toLowerCase()); }
+/* +$ per person for a dish in a slot: price difference vs the regular price (≤$15 → $1, ≤$30 → $2, more → $3); ✦ dishes at least $1 */
+function btAutoPrem(slotK,it){
+  const base=(BT_SLOTSEC[slotK]||{}).base;
+  let t=0;
+  if(it.p&&base){ const d=(it.p.ST||0)-base; t=d<=0?0:d<=15?1:d<=30?2:3; }
+  if(it.prem&&t<1) t=1;
+  return t;
+}
+
+/* ---------- block on the invoice ---------- */
+(function(){
+  const it=$('itemsTbl'); if(!it||$('pkgBlock')) return;
+  const b=document.createElement('div'); b.id='pkgBlock'; b.className='traysonly'; it.parentNode.insertBefore(b,it);
+  const h=document.createElement('input'); h.type='hidden'; h.id='pkgPicks'; b.parentNode.insertBefore(h,b);
+  const sel=$('pkgSel'); if(sel){ sel.setAttribute('onchange','btPkgChanged()'); sel.options[0].textContent='No package (trays only)'; }
+  const pg=$('pkgGuests'); if(pg) pg.addEventListener('input',()=>{ if(!$('eGuests').value) $('eGuests').value=pg.value; });
+  const eg=$('eGuests'); if(eg) eg.addEventListener('input',()=>{ if($('pkgSel').value){ $('pkgGuests').value=eg.value; calc(); } });
+  const bar=document.querySelector('.pkgbar'); if(bar){ const lb=bar.querySelector('b'); if(lb) lb.textContent='Package (per person):'; }
+  const st=document.createElement('style'); st.textContent=`
+#pkgSlots{display:none!important}
+#pkgBlock{display:none;margin:4px 0 12px;border:1px solid #1F3D2B;border-radius:6px;padding:10px 14px}
+#pkgBlock.on{display:block}
+#pkgBlock .ph{display:flex;flex-wrap:wrap;justify-content:space-between;gap:4px 12px;align-items:baseline;border-bottom:1px solid var(--gold);padding-bottom:6px;margin-bottom:4px}
+#pkgBlock .ph b{font-family:Lora,Georgia,serif;font-size:16px;color:#1F3D2B;letter-spacing:.4px}
+#pkgBlock .ph span{font-size:14px;color:#1F3D2B}
+#pkgBlock .pl{display:flex;align-items:center;gap:6px 10px;flex-wrap:wrap;padding:7px 0;border-bottom:1px solid #ECE5D5;font-size:15px}
+#pkgBlock .pl:last-child{border-bottom:0}
+#pkgBlock .pk{min-width:104px;color:var(--muted);font-size:13px}
+#pkgBlock .pd{flex:1 1 180px;font-weight:500}
+#pkgBlock .pd.empty{color:#b3261e;font-weight:400;font-style:italic}
+#pkgBlock .pp{color:var(--gold);font-size:14px;white-space:nowrap}
+#pkgBlock .pc{display:flex;gap:6px;align-items:center}
+#pkgBlock .pc button{border:1px solid #1F3D2B;background:#fff;color:#1F3D2B;border-radius:999px;padding:6px 12px;font-size:13.5px;cursor:pointer}
+#pkgBlock .pc select{font-size:13.5px;padding:4px;border:1px solid var(--line);border-radius:6px}
+#pkgBlock .pc .px{border:0;padding:4px 6px;color:#999}
+#pkgBlock .fixed{color:var(--muted);font-size:13.5px}
+#itemsTbl:has(#itemsBody:empty) thead{display:none}
+.mrow .mp{color:#A8843A;font-size:12.5px;margin-left:6px;white-space:nowrap}
+.mrow button.pick{background:#1F3D2B;color:#fff;border-color:#1F3D2B}
+@media print{ #pkgBlock .pc{display:none!important} #pkgBlock .pd.empty{display:none} #pkgBlock{break-inside:avoid;padding:6px 12px;margin-bottom:8px}
+  #pkgBlock .pls{display:grid;grid-template-columns:1fr 1fr;column-gap:24px}
+  #pkgBlock .pl{padding:3px 0;font-size:13px;flex-wrap:nowrap} #pkgBlock .pd{flex:1 1 auto;min-width:0} #pkgBlock .ph{padding-bottom:4px} #pkgBlock .pk{min-width:78px;font-size:11.5px} #pkgBlock .pp{font-size:12px} }
+body.kitchen #pkgBlock .pp, body.kitchen #pkgBlock .ph span.pr{display:none!important}
+body.kitchen #pkgBlock{border-color:#000}
+body.kitchen #itemsTbl.nofood thead{display:none}
+body.kitchen #pkgBlock .ph{border-bottom-color:#000}
+body.kitchen #pkgBlock .pd{font-weight:600!important}
+body.kitchen #pkgBlock .pl{border-bottom-color:#c8c8c8}
+`; document.head.appendChild(st);
+})();
+function btPkgBuild(name,keep){
+  const def=BT_PKGDEF[name]; if(!def){ btPkg={pkg:'',slots:[]}; return; }
+  const old=(keep&&keep.slots)||[]; const used={}; const slots=[];
+  def.forEach(d=>{ for(let i=0;i<d.n;i++){ const prev=old.filter(s=>s.k===d.k)[(used[d.k]=(used[d.k]||0)+1)-1];
+    slots.push({k:d.k,l:d.l,h:d.h,dish:prev?prev.dish:'',prem:prev?prev.prem:0}); } });
+  btPkg={pkg:name,slots};
+}
+function btPkgChanged(){
+  const name=$('pkgSel').value;
+  btPkgBuild(name,btPkg);
+  if(name&&!$('pkgGuests').value&&$('eGuests').value) $('pkgGuests').value=$('eGuests').value;
+  btPkgSave(); calc();
+}
+function btPkgSave(){ $('pkgPicks').value=btPkg.pkg?JSON.stringify(btPkg):''; }
+function btPkgPremTotal(){ return btPkg.pkg?btPkg.slots.reduce((a,s)=>a+(s.dish?(+s.prem||0):0),0):0; }
+function btPkgRender(){
+  const b=$('pkgBlock'); if(!b) return;
+  const tb=$('itemsTbl'); if(tb) tb.classList.toggle('nofood',![...$('itemsBody').querySelectorAll('tr')].some(tr=>tr.dataset.opt!=='1'));
+  const on=document.body.dataset.mode==='trays'&&!!btPkg.pkg&&$('pkgSel').value===btPkg.pkg;
+  b.classList.toggle('on',on); if(!on){ b.innerHTML=''; return; }
+  const g=parseFloat($('pkgGuests').value)||0, t=computeTotals(), prem=btPkgPremTotal();
+  const base=t.pkgPer-prem;
+  const per=g?`${g} guests · ${money(t.pkgPer)} per person${prem?` (${money(base)} + ${money(prem)} premium)`:''}`:'Enter the number of guests';
+  b.innerHTML=`<div class="ph"><b>${esc(btPkg.pkg.toUpperCase())}</b><span class="pr">${esc(per)}</span></div><div class="pls">`+
+    btPkg.slots.map((s,i)=>`<div class="pl"><span class="pk">${esc(s.l)}</span>`+
+      `<span class="pd${s.dish?'':' empty'}">${s.dish?esc(s.dish):'Choose a dish — '+esc(s.h)}</span>`+
+      (s.dish&&+s.prem?`<span class="pp">✦ +${money(+s.prem)} / person</span>`:'')+
+      `<span class="pc hideprint"><button onclick="btPkgPick(${i})">${s.dish?'Change':'Choose'}</button>`+
+      (s.dish?`<select title="Premium per person" onchange="btPkgPrem(${i},this.value)">${[0,1,2,3].map(v=>`<option value="${v}" ${(+s.prem)===v?'selected':''}>${v?'+$'+v+' / person':'Regular'}</option>`).join('')}</select><button class="px" title="Remove" onclick="btPkgClear(${i})">×</button>`:'')+
+      `</span></div>`).join('')+
+    `<div class="pl"><span class="pk">Included</span><span class="fixed">${esc(BT_PKG_FIXED)}</span></div></div>`;
+}
+function btPkgPrem(i,v){ btPkg.slots[i].prem=+v; btPkgSave(); calc(); }
+function btPkgClear(i){ btPkg.slots[i].dish=''; btPkg.slots[i].prem=0; btPkgSave(); calc(); }
+
+/* chooser: the live tray menu, filtered to the slot's sections */
+let btPkgSlot=-1;
+async function btPkgPick(i){
+  btPkgSlot=i; const s=btPkg.slots[i];
+  $('drawerTitle').textContent='Choose '+s.l+' for '+btPkg.pkg.replace('Catering ','');
+  $('drawerTools').innerHTML=`<div class="tools"><input id="pQ" placeholder="Search a dish…" oninput="btPkgMenu()"></div><div class="note" style="margin:-4px 0 8px">${esc(s.h)}. ✦ premium dishes add to the price per person (you can change the amount after).</div>`;
+  $('savedList').innerHTML='<div class="note">Loading the menu…</div>';
+  $('drawer').classList.add('open');$('backdrop').classList.add('show');
+  try{ await btLoadMenu(); btPkgMenu(); }catch(e){ $('savedList').innerHTML='<div class="note">Could not load the menu.</div>'; }
+}
+function btPkgMenu(){
+  const s=btPkg.slots[btPkgSlot]; if(!s) return;
+  const q=($('pQ')&&$('pQ').value||'').trim().toLowerCase();
+  const secs=(BT_SLOTSEC[s.k]||{sec:[]}).sec; let html='';
+  const list=q?(btMenu||[]).filter(x=>x.items.some(it=>it.n.toLowerCase().includes(q))):secs.map(btSecOf).filter(Boolean);
+  list.forEach((sec,n)=>{
+    const si=btMenu.indexOf(sec);
+    const L=sec.items.map((it,ii)=>({it,ii})).filter(x=>!q||x.it.n.toLowerCase().includes(q));
+    if(!L.length) return;
+    html+=`<details class="msec" ${(q||n===0)?'open':''}><summary>${esc(sec.sec)}${sec.prem?' ✦':''} <small>${L.length}</small></summary>`+
+      L.map(({it,ii})=>{ const p=btAutoPrem(s.k,it); return `<div class="mrow"><div class="mn">${esc(it.n)}${p?`<span class="mp">✦ +$${p} / person</span>`:''}</div><div class="mb"><button class="pick" onclick="btPkgChoose(${si},${ii})">Choose</button></div></div>`; }).join('')+'</details>';
+  });
+  html+=`<div class="note" style="margin-top:8px">Not on the menu? <a href="#" onclick="btPkgTyped();return false">Type the dish name</a></div>`;
+  $('savedList').innerHTML=html;
+}
+function btPkgChoose(si,ii){
+  const it=btMenu[si].items[ii], s=btPkg.slots[btPkgSlot]; if(!s) return;
+  s.dish=it.n; s.prem=btAutoPrem(s.k,it);
+  btPkgSave(); closeDrawer(); calc();
+  flash(s.l+': '+it.n+(s.prem?' (+$'+s.prem+' / person)':''));
+  const next=btPkg.slots.findIndex(x=>!x.dish); if(next>=0) setTimeout(()=>{ if(btPkg.slots[next]&&!btPkg.slots[next].dish&&!$('drawer').classList.contains('open')) btPkgPick(next); },350);
+}
+function btPkgTyped(){
+  const s=btPkg.slots[btPkgSlot]; if(!s) return;
+  const n=prompt(s.l+' — dish name'); if(!n||!n.trim()) return;
+  s.dish=n.trim(); s.prem=0; btPkgSave(); closeDrawer(); calc();
+}
+
+/* ---------- pricing, checks, save / load ---------- */
+const _btPPP=window.pkgPerPerson;
+window.pkgPerPerson=function(name,guests,sur){ const b=_btPPP(name,guests,sur); return b?b+(btPkg.pkg===name?btPkgPremTotal():0):0; };
+const _btMissP=window.btMissing;
+window.btMissing=function(){
+  let m=_btMissP();
+  const on=document.body.dataset.mode==='trays'&&btPkg.pkg&&$('pkgSel').value===btPkg.pkg;
+  if(on){
+    m=m.filter(x=>x!=='at least one item');
+    if(!(parseFloat($('pkgGuests').value)>0)) m.push('number of guests for the package');
+    const left=btPkg.slots.filter(s=>!s.dish).length; if(left) m.push('package dishes ('+left+' to choose)');
+  }
+  return m;
+};
+const _btCalcP=window.calc;
+window.calc=function(){ _btCalcP(); btPkgRender();
+  if(document.body.dataset.mode==='trays'&&$('pkgSel').value){ const t=computeTotals();
+    if($('pkgLbl')&&t.pkgGuests) $('pkgLbl').textContent=t.pkgName.replace('Catering ','')+' · '+t.pkgGuests+' × '+money(t.pkgPer);
+    if($('rFood')) $('rFood').style.display=t.food>0.0001?'flex':'none'; }
+  else if($('rFood')) $('rFood').style.display='flex'; const e=$('itemsEmpty'); if(e&&btPkg.pkg&&document.body.dataset.mode==='trays') e.style.display='none'; };
+const _btLoadP=window.load;
+window.load=function(doc){
+  btPkg={pkg:'',slots:[]};
+  const r=_btLoadP.apply(this,arguments);
+  try{ const v=(doc.fields||{}).pkgPicks; if(v){ const o=JSON.parse(v); btPkgBuild(o.pkg,o); } else if((doc.fields||{}).pkgSel) btPkgBuild(doc.fields.pkgSel,null); }catch(e){}
+  btPkgSave(); calc(); return r;
+};
+const _btGatherP=window.gather;
+window.gather=function(){ const d=_btGatherP(); if(d&&d.fields){ btPkgSave(); d.fields.pkgPicks=$('pkgPicks').value; } return d; };
+const _btNewP=window.newDoc;
+window.newDoc=function(){ btPkg={pkg:'',slots:[]}; if($('pkgPicks')) $('pkgPicks').value=''; return _btNewP.apply(this,arguments); };
+/* Word export: list the package dishes under the package total */
+const _btWordP=window.wordHTML;
+if(_btWordP) window.wordHTML=function(){
+  let h=_btWordP.apply(this,arguments);
+  if(btPkg.pkg&&document.body.dataset.mode==='trays'){
+    const L=btPkg.slots.filter(s=>s.dish).map(s=>`<tr><td style="border:1px solid #999;padding:4px;color:#555">${esc(s.l)}</td><td style="border:1px solid #999;padding:4px">${esc(s.dish)}${+s.prem?' (+'+money(+s.prem)+' / person)':''}</td></tr>`).join('');
+    const blk=`<div style="font-family:Arial;font-size:12px;margin:8px 0"><b>${esc(btPkg.pkg)}</b> — ${esc($('pkgGuests').value)} guests<table style="border-collapse:collapse;width:100%;margin-top:4px">${L}<tr><td style="border:1px solid #999;padding:4px;color:#555">Included</td><td style="border:1px solid #999;padding:4px">${esc(BT_PKG_FIXED)}</td></tr></table></div>`;
+    const th=h.indexOf('<th'), i=th>0?h.lastIndexOf('<table',th):-1; h=i>0?h.slice(0,i)+blk+h.slice(i):h+blk;
+  }
+  return h;
+};
+/* kitchen copy: don't warn "no items" when it's a package order */
+const _btFlashP=window.flash;
+window.flash=function(m){ if(m==='No items on this order yet'&&btPkg.pkg) return; return _btFlashP(m); };
+calc();
+</script>
 </body>
 </html>
