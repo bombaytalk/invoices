@@ -1178,8 +1178,124 @@ window.flash=function(m){ try{ if(window._btLastFlash) window._btLastFlash.remov
 
 /* ---------- start ---------- */
 newDoc();
-bootAuth();
 
+</script>
+<script>
+/* ---------- Logins: MK = master; separate staff logins (Simon, Jayshree, Office…) ---------- */
+let btRole='', btMasterTok='';
+try{btMasterTok=localStorage.getItem('bt_master')||'';}catch(e){}
+async function btApi(action,data){
+  const r=await fetch(BT_API,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},
+    body:JSON.stringify(Object.assign({action:'inv_'+action,token:btKey},data||{}))});
+  const j=await r.json();
+  if(!j.ok){const e=new Error(j.error||'failed');e.code=j.error;throw e;}
+  return j;
+}
+function btStoreKey(tok,remember){ try{ if(remember){localStorage.setItem('bt_key',tok);sessionStorage.removeItem('bt_key');} else {sessionStorage.setItem('bt_key',tok);localStorage.removeItem('bt_key');} }catch(e){} }
+(function(){ const n=$('gateName'), p=$('gatePw'); if(n) n.placeholder='User name (MK, Simon, Jayshree, Office)'; if(p) p.placeholder='Password';
+  const sub=document.querySelector('#gate div[style*="margin-bottom:16px"]'); if(sub) sub.textContent='Sign in with your own login'; })();
+async function tryGate(){
+  const nm=$('gateName').value.trim(), pw=$('gatePw').value;
+  if(!nm){$('gateErr').textContent='Please type your user name';return;}
+  if(!pw){$('gateErr').textContent='Please type your password';return;}
+  $('gateBtn').textContent='Checking…'; $('gateErr').textContent='';
+  try{
+    const r=await btApi('login',{user:nm,pw:pw});
+    btKey=r.token; btName=r.name; btRole=r.role; btMasterTok='';
+    btStoreKey(r.token,$('gateRemember').checked);
+    try{localStorage.setItem('bt_name',nm);localStorage.removeItem('bt_master');}catch(e){}
+    $('gatePw').value='';
+    afterLogin();
+  }catch(e){
+    $('gateErr').textContent = e.code==='bad_login'?'Wrong user name or password': e.code==='locked'?'Too many wrong tries. Please wait 15 minutes.': e.code==='not_set'?'Logins are not set up yet (ask MK)':'Could not reach the server. Check the internet and try again.';
+  }
+  $('gateBtn').textContent='Sign in';
+}
+function signOut(){ try{localStorage.removeItem('bt_key');sessionStorage.removeItem('bt_key');localStorage.removeItem('bt_master');}catch(e){} location.href=location.pathname; }
+function btApplyRole(){
+  const master=btRole==='master';
+  document.querySelectorAll('button[onclick^="yearExcel"]').forEach(b=>b.style.display=master?'':'none');
+  let ub=$('usersBtn');
+  if(!ub){ ub=document.createElement('button'); ub.id='usersBtn'; ub.className='ghost'; ub.textContent='👥 Users'; ub.onclick=openUsers;
+    const ye=document.querySelector('button[onclick^="yearExcel"]'); ye&&ye.parentNode.insertBefore(ub,ye.nextSibling); }
+  ub.style.display=master?'':'none';
+  $('who').innerHTML='Signed in: <b>'+esc(btName)+'</b>'+(master?' (master)':'')+
+    (btMasterTok?' · <a href="#" style="color:#ffd27a" onclick="backToMaster();return false">↩ back to MK</a>':'')+
+    ' · <a href="#" style="color:#cfd8ea" onclick="signOut();return false">sign out</a>';
+}
+async function afterLogin(){
+  $('gate').style.display='none';
+  btApplyRole();
+  await migrateLocal();
+  const q=new URLSearchParams(location.search);
+  if(q.get('inv')) openNo(q.get('inv'));
+  else if(q.get('ref')) fromRef(q.get('ref'));
+}
+async function bootAuth2(){
+  try{ const n=localStorage.getItem('bt_name'); if(n) $('gateName').value=n; }catch(e){}
+  if(!btKey) return;
+  try{ const r=await btApi('auth'); btName=r.name; btRole=r.role; afterLogin(); }
+  catch(e){ if(e.code==='bad_key'){ try{localStorage.removeItem('bt_key');sessionStorage.removeItem('bt_key');}catch(x){} btKey=''; }
+    else $('gateErr').textContent='Could not reach the server. Check the internet and try again.'; }
+}
+/* staff can't void */
+const _btRender0=window.renderSaved;
+window.renderSaved=function(){ _btRender0(); if(btRole!=='master') document.querySelectorAll('#savedList button.del').forEach(b=>b.remove()); };
+
+/* ---------- 👥 Users (master only) ---------- */
+let btUsers=[];
+async function openUsers(){
+  $('drawerTitle').textContent='Users (only you can see this)';
+  $('drawerTools').innerHTML='<div class="note" style="margin-bottom:10px">Each person signs in with their own user name and password. Only MK can void invoices, download the Year-end Excel and manage logins. “Sign in as” opens the app as that person (no password needed for you).</div>'+
+    '<div class="ufrm"><b>Add a login or set a new password</b><input id="uName" placeholder="User name (for example: Simon)"><input id="uPw" type="text" placeholder="Password (at least 6 characters)" autocomplete="off"><button onclick="userSave()">Save login</button>'+
+    '<div class="uq">Quick fill: <a href="#" onclick="$(\'uName\').value=\'Simon\';$(\'uPw\').focus();return false">Simon</a> · <a href="#" onclick="$(\'uName\').value=\'Jayshree\';$(\'uPw\').focus();return false">Jayshree</a> · <a href="#" onclick="$(\'uName\').value=\'Office\';$(\'uPw\').focus();return false">Office</a></div><div id="uMsg" class="note"></div></div>';
+  $('savedList').innerHTML='<div class="note">Loading…</div>';
+  $('drawer').classList.add('open');$('backdrop').classList.add('show');
+  try{ btUsers=(await btApi('users')).users; renderUsers(); }catch(e){ $('savedList').innerHTML='<div class="note">Could not load users.</div>'; }
+}
+function renderUsers(){
+  $('savedList').innerHTML=btUsers.map(u=>`<div class="svitem"><div class="t">${esc(u.name)} <span class="pill ${u.active?'Paid':'Void'}">${u.role==='master'?'Master':(u.active?'Active':'Turned off')}</span></div>
+    <div class="s">User name: <b>${esc(u.user==='mk'?'MK':u.name)}</b>${u.changed?' · password set '+esc(u.changed):''}${u.user==='mk'?' · password = INVOICE_KEY in Apps Script':''}</div>
+    ${u.user==='mk'?'':`<button onclick="userAs('${esc(u.user)}')"${u.active?'':' disabled'}>Sign in as</button>
+    <button onclick="$('uName').value='${esc(u.name)}';$('uPw').value='';$('uPw').focus()">New password</button>
+    <button class="del" onclick="userToggle('${esc(u.name)}',${!u.active})">${u.active?'Turn off':'Turn on'}</button>`}</div>`).join('');
+}
+async function userSave(){
+  const name=$('uName').value.trim(), pw=$('uPw').value;
+  if(!name){$('uMsg').textContent='Type a user name.';return;}
+  if(pw.length<6){$('uMsg').textContent='Password must be at least 6 characters.';return;}
+  $('uMsg').textContent='Saving…';
+  try{ btUsers=(await btApi('userSet',{name,pw})).users; renderUsers(); $('uPw').value=''; $('uMsg').textContent='Saved. '+name+' can sign in now.'; }
+  catch(e){ $('uMsg').textContent=e.code||'Could not save.'; }
+}
+async function userToggle(name,on){
+  if(!on && !confirm('Turn off the login for '+name+'? They will be signed out everywhere. Their invoices stay.')) return;
+  try{ btUsers=(await btApi('userSet',{name,active:on})).users; renderUsers(); }catch(e){ alert(e.code||'Could not change.'); }
+}
+async function userAs(user){
+  try{
+    const r=await btApi('as',{user});
+    if(!btMasterTok){ btMasterTok=btKey; try{localStorage.setItem('bt_master',btKey);}catch(e){} }
+    btKey=r.token; btName=r.name; btRole=r.role; btStoreKey(r.token,true);
+    closeDrawer(); newDoc(); btApplyRole(); flash('Now signed in as '+r.name);
+  }catch(e){ alert('Could not sign in as '+user); }
+}
+async function backToMaster(){
+  if(!btMasterTok) return;
+  btKey=btMasterTok; btMasterTok=''; btStoreKey(btKey,true); try{localStorage.removeItem('bt_master');}catch(e){}
+  try{ const r=await btApi('auth'); btName=r.name; btRole=r.role; }catch(e){ signOut(); return; }
+  newDoc(); btApplyRole(); flash('Back to MK');
+}
+(function(){const st=document.createElement('style');st.textContent=`
+.ufrm{display:flex;flex-direction:column;gap:8px;border:1px solid #e3e7ef;border-radius:8px;padding:12px;margin-bottom:12px;background:#fafbfd;font-size:15px}
+.ufrm input{padding:11px;border:1px solid #c9d2e0;border-radius:6px;font-size:16px}
+.ufrm button{background:#1f3864;color:#fff;border:0;border-radius:8px;padding:11px;font-weight:bold;font-size:15px;cursor:pointer}
+.ufrm .uq{font-size:14px;color:#5a6472}
+.drawer .svitem button[disabled]{opacity:.4}
+.drawer .svitem .t{font-size:17px}
+.drawer .svitem .s{font-size:14px;margin:3px 0 6px}
+.drawer .svitem button{font-size:14px;padding:7px 12px}`;document.head.appendChild(st);})();
+bootAuth2();
 </script>
 </body>
 </html>
