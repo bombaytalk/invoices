@@ -1474,22 +1474,22 @@ window.load=function(doc){ if($('kTime')) $('kTime').value=''; return _btLoadK.a
 const BT_PKGDEF={
  "Catering Package #1":[
   {k:'app',l:'Appetizer',n:1,h:'Regular appetizer, 1 pc per person'},
-  {k:'bread',l:'Bread',n:1,h:'Roti or Puri'},
-  {k:'rice',l:'Rice',n:1,h:'Jeera Rice or Plain Rice'},
+  {k:'bread',l:'Bread',n:1,h:'Roti or Puri',inc:['Rotli','Puri','Tandoori Roti']},
+  {k:'rice',l:'Rice',n:1,h:'Jeera Rice or Plain Rice',inc:['Plain Rice','Jeera Rice']},
   {k:'veg',l:'Vegetable',n:1,h:'1 vegetable'},
   {k:'dal',l:'Dal / Kadhi',n:1,h:'1 dal or kadhi'},
   {k:'dessert',l:'Dessert',n:1,h:'1 pc per person'}],
  "Catering Package #2":[
   {k:'app',l:'Appetizer',n:2,h:'2 regular appetizers, 1 pc each per person'},
-  {k:'bread',l:'Bread',n:2,h:'Any two: Puri / Naan / Roti'},
-  {k:'rice',l:'Rice',n:1,h:'Jeera Rice or Peas Pulao'},
+  {k:'bread',l:'Bread',n:2,h:'Any two: Puri / Naan / Roti',inc:['Puri','Rotli','Tandoori Roti','Naan']},
+  {k:'rice',l:'Rice',n:1,h:'Jeera Rice or Peas Pulao',inc:['Jeera Rice','Peas Pulao']},
   {k:'veg',l:'Vegetable',n:1,h:'1 vegetable'},
   {k:'dal',l:'Dal / Kadhi',n:1,h:'1 dal or kadhi'},
   {k:'dessert',l:'Dessert',n:1,h:'1 pc per person'}],
  "Catering Package #3":[
   {k:'app',l:'Appetizer',n:2,h:'Any 2 appetizers, 3 pcs per person total'},
-  {k:'bread',l:'Bread',n:2,h:'Any two: Puri / Naan / Roti'},
-  {k:'rice',l:'Rice',n:1,h:'Any rice / biryani / pulao'},
+  {k:'bread',l:'Bread',n:2,h:'Any two: Puri / Naan / Roti',inc:['Puri','Rotli','Tandoori Roti','Naan']},
+  {k:'rice',l:'Rice',n:1,h:'Any rice / biryani / pulao',any:true},
   {k:'veg',l:'Vegetable',n:2,h:'2 vegetables (one can be paneer)'},
   {k:'dal',l:'Dal / Kadhi',n:1,h:'1 dal or kadhi'},
   {k:'dessert',l:'Dessert',n:1,h:'1.5 pc per person'}]
@@ -1527,9 +1527,13 @@ window.btLoadMenu=async function(){
 function btSecOf(name){ return (btMenu||[]).find(s=>s.sec.toLowerCase()===String(name).toLowerCase()); }
 /* +$ per person for a dish in a slot: price difference vs the regular price (≤$15 → $1, ≤$30 → $2, more → $3); ✦ dishes at least $1 */
 function btAutoPrem(slotK,it){
+  const def=(BT_PKGDEF[btPkg.pkg]||[]).find(d=>d.k===slotK)||{};
+  if(def.any) return 0;
+  if(def.inc&&def.inc.some(n=>n.toLowerCase()===it.n.toLowerCase())) return 0;
   const base=(BT_SLOTSEC[slotK]||{}).base;
   let t=0;
   if(it.p&&base){ const d=(it.p.ST||0)-base; t=d<=0?0:d<=15?1:d<=30?2:3; }
+  if(slotK==='bread'&&def.inc&&(it.each||0)>1) t=Math.max(t,1);
   if(it.prem&&t<1) t=1;
   return t;
 }
