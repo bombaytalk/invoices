@@ -1350,22 +1350,32 @@ body.kitchen .pkgbar, body.kitchen .bottom .totwrap, body.kitchen .pmt, body.kit
 body.kitchen .addbar, body.kitchen #itemsEmpty, body.kitchen .note, body.kitchen #warn, body.kitchen #webRefLbl,
 body.kitchen .fld:has(#cAddr), body.kitchen .fld:has(#cEmail), body.kitchen .ihead .co .tag{display:none!important}
 body.kitchen .bottom{grid-template-columns:1fr;margin-top:10px}
-body.kitchen #itemsTbl td:nth-child(3) textarea{font-size:19px;font-weight:600}
-body.kitchen #itemsTbl td:nth-child(1) input{font-size:20px;font-weight:700;text-align:center}
-body.kitchen #itemsTbl td:nth-child(2) select{font-size:17px;font-weight:600}
-body.kitchen #itemsTbl th{font-size:13px}
-body.kitchen .fld b{font-size:14px}
-body.kitchen .fld input,body.kitchen .fld select{font-size:17px;font-weight:600}
-body.kitchen .notesbox textarea{font-size:17px;min-height:80px}
+body.kitchen #itemsTbl td:nth-child(3) textarea{font-size:16px;font-weight:500}
+body.kitchen #itemsTbl td:nth-child(1) input{font-size:16px;font-weight:600;text-align:center}
+body.kitchen #itemsTbl td:nth-child(2) select{font-size:15px;font-weight:500}
+body.kitchen #itemsTbl th{font-size:12px}
+body.kitchen #itemsTbl tr.optrow{display:none!important}
+body.kitchen .fld b{font-size:13px}
+body.kitchen .fld input,body.kitchen .fld select{font-size:15px;font-weight:500}
+body.kitchen .notesbox textarea{font-size:15px;min-height:70px}
 body.kitchen #kitchenGuests{display:block}
+body.kitchen #kitchenSend.has{display:block}
 body.kitchen .grid2 .fld input,body.kitchen .grid2 .fld select{max-width:none!important;width:0;flex:1 1 auto;min-width:0}
 .grid2>.fld{min-width:0}
 body.kitchen #itemsTbl td:nth-child(2) select{min-width:58px}
-#kitchenGuests{display:none;margin:4px 0 2px;font-family:Lora,Georgia,serif;font-size:22px;color:#1F3D2B;font-weight:700;border:1.5px solid #1F3D2B;border-radius:6px;padding:8px 12px;text-align:center}
-#kitchenGuests small{font-family:Poppins,Arial,sans-serif;font-size:14px;color:var(--gold);font-weight:500;margin-left:10px}
+#kitchenGuests{display:none;margin:4px 0 2px;font-family:Lora,Georgia,serif;font-size:17px;color:#1F3D2B;font-weight:600;border:1px solid #1F3D2B;border-radius:6px;padding:7px 12px;text-align:center}
+#kitchenGuests small{font-family:Poppins,Arial,sans-serif;font-size:14px;color:var(--gold);font-weight:400;margin-left:10px}
+#kitchenSend{display:none;margin:14px 0 4px;border:1px solid var(--gold);border-radius:6px;padding:8px 14px 10px}
+#kitchenSend h4{margin:0 0 6px;font-family:Lora,Georgia,serif;font-size:14px;letter-spacing:1.2px;color:#1F3D2B;font-weight:600}
+#kitchenSend ul{margin:0;padding:0;list-style:none}
+#kitchenSend li{font-size:15px;padding:5px 0;border-bottom:1px solid #ECE5D5;display:flex;gap:10px}
+#kitchenSend li:last-child{border-bottom:0}
+#kitchenSend li::before{content:'☐';color:#1F3D2B}
+#kitchenSend li b{font-weight:600;min-width:34px;text-align:right}
+@media print{ #kitchenSend{break-inside:avoid;-webkit-print-color-adjust:exact;print-color-adjust:exact} }
 .modeswitch #mKitchen.active{background:#fff;color:#1F3D2B}
-@media (max-width:640px){ body.kitchen #itemsTbl tr{grid-template-columns:62px 74px 1fr 40px} }
-@media print{ body.kitchen .paper{font-size:15px} body.kitchen .foot{display:none} }
+@media (max-width:640px){ body.kitchen #itemsTbl tr:not(.optrow){grid-template-columns:62px 74px 1fr 40px} }
+@media print{ body.kitchen .paper{font-size:14px} body.kitchen .foot{display:none} }
 `;
   document.head.appendChild(st);
   // Kitchen Order tab next to Catering / Party Trays
@@ -1374,12 +1384,27 @@ body.kitchen #itemsTbl td:nth-child(2) select{min-width:58px}
   // big guest / date line for the kitchen copy
   const it=$('itemsTbl');
   if(it && !$('kitchenGuests')){ const d=document.createElement('div'); d.id='kitchenGuests'; it.parentNode.insertBefore(d,it); }
+  if(it && !$('kitchenSend')){ const k=document.createElement('div'); k.id='kitchenSend'; it.parentNode.insertBefore(k,it.nextSibling); }
 })();
 function btKitchenLine(){
   const m=document.body.dataset.mode, g=$('eGuests').value||'—';
   const dt=m==='trays'?$('tDate').value:$('eDate').value, tm=m==='trays'?$('tTime').value:$('eTime').value;
   const sv=m==='trays'?$('tService').value:[$('eService').value,$('eFood').value,$('eSpice').value].filter(Boolean).join(' · ');
   $('kitchenGuests').innerHTML=esc(g)+' guests<small>'+esc([dt,tm,sv].filter(Boolean).join(' · '))+'</small>';
+  btKitchenSend(m);
+}
+function btKitchenSend(m){
+  const L=[];
+  $('itemsBody').querySelectorAll('tr.optrow').forEach(tr=>{
+    const q=(tr.querySelector('td:nth-child(1) input')||{}).value||'', t=((tr.querySelector('td:nth-child(3) textarea')||{}).value||'').trim();
+    if(t) L.push([q,t]);
+  });
+  const hb=$('hotbox'); if(m==='trays'&&hb&&+hb.value>0) L.push(['','Hot boxes / igloos (refundable deposit taken)']);
+  const sv=m==='trays'?$('tService').value:$('eService').value;
+  if(sv&&!/pickup/i.test(sv)&&!L.some(x=>x[1].toLowerCase().indexOf(sv.toLowerCase())>=0)) L.push(['',sv]);
+  const box=$('kitchenSend');
+  box.innerHTML=L.length?'<h4>SEND WITH THE ORDER</h4><ul>'+L.map(x=>'<li><b>'+esc(x[0]?x[0]+' ×':'')+'</b><span>'+esc(x[1])+'</span></li>').join('')+'</ul>':'';
+  box.classList.toggle('has',L.length>0);
 }
 function toggleKitchen(on){
   const k=(on===undefined)?!document.body.classList.contains('kitchen'):!!on;
