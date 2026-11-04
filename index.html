@@ -1297,5 +1297,109 @@ async function backToMaster(){
 .drawer .svitem button{font-size:14px;padding:7px 12px}`;document.head.appendChild(st);})();
 bootAuth2();
 </script>
+<script>
+/* ---------- Heirloom look (forest green + antique gold, outlines only — low-ink) + Kitchen Order view ---------- */
+(function(){
+  const l=document.createElement('link'); l.rel='stylesheet';
+  l.href='https://fonts.googleapis.com/css2?family=Lora:wght@500;600;700&family=Poppins:wght@300;400;500;600&display=swap';
+  document.head.appendChild(l);
+  const st=document.createElement('style'); st.id='bt-theme'; st.textContent=`
+:root{--navy:#1F3D2B;--navy2:#1F3D2B;--gold:#A8843A;--line:#D9CFB8;--band:transparent;--bg:#F6F2E8;--yellow:#FBF6E8;--muted:#5E5A50}
+html,body{overflow-x:clip}
+body{font-family:Poppins,Arial,sans-serif;font-size:15px;background:var(--bg)}
+.toolbar{background:#1F3D2B}
+.toolbar button{color:#1F3D2B}
+.modeswitch button{color:#fff!important}
+.modeswitch button.active{background:#fff!important;color:#1F3D2B!important}
+.paper{border:1px solid var(--line);box-shadow:0 2px 10px rgba(60,50,20,.06)}
+.ihead{border-bottom:1.5px solid var(--gold)}
+.ihead .co h1{font-family:Lora,Georgia,serif;font-weight:700;color:#1F3D2B;font-size:21px;letter-spacing:.6px}
+.ihead .co .tag{font-family:Lora,Georgia,serif;color:var(--gold)}
+.ihead .co .doctype{color:#1F3D2B;font-size:14px;letter-spacing:1.5px}
+.invno{color:var(--gold)}
+.fld b{color:#1F3D2B;font-size:12.5px;font-weight:600}
+.fld input,.fld select{font-size:14px}
+.sectionband,.pmthead{background:transparent;color:#1F3D2B;border:1.5px solid #1F3D2B;font-family:Lora,Georgia,serif;font-weight:700;font-size:14.5px;letter-spacing:1.2px;padding:7px 12px}
+.sectionband span:last-child{color:var(--gold)}
+th{background:transparent;color:#1F3D2B;border-top:1px solid var(--gold);border-bottom:1.5px solid #1F3D2B;font-size:12px;font-weight:600;letter-spacing:.8px}
+td{border-bottom:1px solid #ECE5D5}
+td input,td select,td textarea{font-size:14.5px}
+.pkgbar{background:transparent!important;border:1px dashed var(--line)!important}
+.tots{border:1px solid var(--gold)}
+.totrow{font-size:13.5px}
+.totrow.big{background:transparent;color:#1F3D2B;border-top:1.5px solid #1F3D2B;font-family:Lora,Georgia,serif;font-size:16.5px}
+.totrow.big span:first-child{color:#1F3D2B}
+.addrow{background:#fff;color:#1F3D2B;border:1px dashed #1F3D2B}
+.empty{background:#fff;border-color:var(--line)}
+.notesbox textarea{background:#fff;border:1px solid var(--line);font-size:14px}
+.foot{border-top:1px solid var(--gold);color:var(--muted);font-size:11.5px}
+.note{font-size:12px}
+.pill{background:transparent;border:1px solid currentColor}
+@media print{
+  .paper{border:none}
+  .bt-toast,.meta,.pkgbar,.adjust,.tip,#kitchenGuests~.nothing{display:none!important}
+  select{-webkit-appearance:none;appearance:none;background:none!important;border:none!important;padding-left:2px!important}
+  ::placeholder{color:transparent!important}
+  textarea{resize:none!important}
+  .sectionband,.pmthead,th,.totrow.big,.tots{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .paper{font-size:12.5px}
+}
+/* ---------- Kitchen Order view: items + quantities + guests only ---------- */
+body.kitchen #itemsTbl th:nth-child(n+4), body.kitchen #itemsTbl td:nth-child(n+4){display:none!important}
+body.kitchen .pkgbar, body.kitchen .bottom .totwrap, body.kitchen .pmt, body.kitchen .meta,
+body.kitchen .addbar, body.kitchen #itemsEmpty, body.kitchen .note, body.kitchen #warn, body.kitchen #webRefLbl,
+body.kitchen .fld:has(#cAddr), body.kitchen .fld:has(#cEmail), body.kitchen .ihead .co .tag{display:none!important}
+body.kitchen .bottom{grid-template-columns:1fr;margin-top:10px}
+body.kitchen #itemsTbl td:nth-child(3) textarea{font-size:19px;font-weight:600}
+body.kitchen #itemsTbl td:nth-child(1) input{font-size:20px;font-weight:700;text-align:center}
+body.kitchen #itemsTbl td:nth-child(2) select{font-size:17px;font-weight:600}
+body.kitchen #itemsTbl th{font-size:13px}
+body.kitchen .fld b{font-size:14px}
+body.kitchen .fld input,body.kitchen .fld select{font-size:17px;font-weight:600}
+body.kitchen .notesbox textarea{font-size:17px;min-height:80px}
+body.kitchen #kitchenGuests{display:block}
+body.kitchen .grid2 .fld input,body.kitchen .grid2 .fld select{max-width:none!important;width:0;flex:1 1 auto;min-width:0}
+.grid2>.fld{min-width:0}
+body.kitchen #itemsTbl td:nth-child(2) select{min-width:58px}
+#kitchenGuests{display:none;margin:4px 0 2px;font-family:Lora,Georgia,serif;font-size:22px;color:#1F3D2B;font-weight:700;border:1.5px solid #1F3D2B;border-radius:6px;padding:8px 12px;text-align:center}
+#kitchenGuests small{font-family:Poppins,Arial,sans-serif;font-size:14px;color:var(--gold);font-weight:500;margin-left:10px}
+.modeswitch #mKitchen.active{background:#fff;color:#1F3D2B}
+@media (max-width:640px){ body.kitchen #itemsTbl tr{grid-template-columns:62px 74px 1fr 40px} }
+@media print{ body.kitchen .paper{font-size:15px} body.kitchen .foot{display:none} }
+`;
+  document.head.appendChild(st);
+  // Kitchen Order tab next to Catering / Party Trays
+  const ms=document.querySelector('.modeswitch');
+  if(ms && !$('mKitchen')){ const b=document.createElement('button'); b.id='mKitchen'; b.textContent='🍳 Kitchen Order'; b.onclick=toggleKitchen; ms.appendChild(b); }
+  // big guest / date line for the kitchen copy
+  const it=$('itemsTbl');
+  if(it && !$('kitchenGuests')){ const d=document.createElement('div'); d.id='kitchenGuests'; it.parentNode.insertBefore(d,it); }
+})();
+function btKitchenLine(){
+  const m=document.body.dataset.mode, g=$('eGuests').value||'—';
+  const dt=m==='trays'?$('tDate').value:$('eDate').value, tm=m==='trays'?$('tTime').value:$('eTime').value;
+  const sv=m==='trays'?$('tService').value:[$('eService').value,$('eFood').value,$('eSpice').value].filter(Boolean).join(' · ');
+  $('kitchenGuests').innerHTML=esc(g)+' guests<small>'+esc([dt,tm,sv].filter(Boolean).join(' · '))+'</small>';
+}
+function toggleKitchen(on){
+  const k=(on===undefined)?!document.body.classList.contains('kitchen'):!!on;
+  document.body.classList.toggle('kitchen',k);
+  $('mKitchen').classList.toggle('active',k);
+  const m=document.body.dataset.mode;
+  $('mCater').classList.toggle('active',!k&&m==='catering'); $('mTrays').classList.toggle('active',!k&&m==='trays');
+  $('docTypeLabel').textContent=k?'KITCHEN ORDER':$('docType').value;
+  if(k){ stripBlank(); btKitchenLine(); if(!$('itemsBody').querySelector('tr')) flash('No items on this order yet'); }
+  else calc();
+}
+const _btFlashK=window.flash;
+window.flash=function(m){ _btFlashK(m); try{ document.body.lastElementChild.classList.add('bt-toast'); }catch(e){} };
+document.querySelectorAll('.note.traysonly').forEach(n=>{ if(/Tray sizes/.test(n.textContent)) n.classList.add('tip'); });
+const _btSetModeK=window.setMode;
+window.setMode=function(m){ if(document.body.classList.contains('kitchen')){ document.body.classList.remove('kitchen'); $('mKitchen').classList.remove('active'); } _btSetModeK(m); };
+const _btCalcK=window.calc;
+window.calc=function(){ _btCalcK(); if(document.body.classList.contains('kitchen')){ $('docTypeLabel').textContent='KITCHEN ORDER'; btKitchenLine(); } };
+const _btNewDocK=window.newDoc;
+window.newDoc=function(){ if(document.body.classList.contains('kitchen')) toggleKitchen(false); _btNewDocK(); };
+</script>
 </body>
 </html>
