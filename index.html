@@ -1379,7 +1379,11 @@ body.kitchen .grid2 .fld input,body.kitchen .grid2 .fld select{max-width:none!im
 .grid2>.fld{min-width:0}
 body.kitchen #itemsTbl td:nth-child(2) select{min-width:58px}
 #kitchenGuests{display:none;margin:4px 0 2px;font-size:14.5px;border:1px solid #000;border-radius:6px;padding:7px 12px;text-align:center}
-#kitchenGuests .kt{font-weight:600!important}
+#kitchenGuests .kt{display:inline-block;font-size:17px;font-weight:600!important;border:2px solid #000;border-radius:5px;padding:3px 10px;margin:2px 6px 2px 0;letter-spacing:.3px}
+#kitchenGuests .kt+.sep{display:none}
+@media (max-width:640px){ #kitchenGuests .kt{display:table;margin:2px auto 6px} }
+body.kitchen .fld.konly{border-bottom:2px solid #000!important}
+body.kitchen .fld.konly b,body.kitchen .fld.konly input{font-weight:600!important}
 #kitchenGuests .sep{margin:0 8px}
 #kitchenSend{display:none;margin:14px 0 4px;border:1px solid #000;border-radius:6px;padding:8px 14px 10px}
 #kitchenSend h4{margin:0 0 6px;font-size:12.5px;letter-spacing:1.2px}
@@ -1419,7 +1423,7 @@ function btKitchenLine(){
   const sv=m==='trays'?$('tService').value:[$('eService').value,$('eFood').value,$('eSpice').value].filter(Boolean).join(' \u00b7 ');
   const kind=btKitchenKind(m), kt=$('kTime').value;
   const parts=[];
-  if(kt) parts.push('<span class="kt">Kitchen ready '+esc(kt)+'</span>');
+  if(kt) parts.push('<span class="kt">KITCHEN READY '+esc(kt)+'</span>');
   if(tm) parts.push(esc(kind)+' '+esc(tm));
   if(dt) parts.push(esc(dt));
   parts.push(esc(g)+' guests');
