@@ -1815,5 +1815,307 @@ if(_btWordPr) window.wordHTML=function(){
 const _btSetModePr=window.setMode;
 window.setMode=function(m){ const r=_btSetModePr.apply(this,arguments); try{ btKitchenLine(); }catch(e){} return r; };
 </script>
+<script>
+/* ---------- Word (.doc) export, Heirloom outline look: no filled colors, printer friendly ---------- */
+window.wordHTML=function(){
+  const g=gather().fields, t=computeTotals(), m=t.mode, kitchen=document.body.classList.contains('kitchen');
+  const G='#1F3D2B', GOLD='#A8843A', LINE='#D9CFB8', ROW='#E5DDCB', MUT='#5E5A50';
+  const C=kitchen?'#000':G, A=kitchen?'#000':GOLD;
+  const e=s=>String(s==null?'':s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])).replace(/\n/g,'<br>');
+  const SER="font-family:Lora,Georgia,'Times New Roman',serif", SANS="font-family:Poppins,Arial,sans-serif";
+  const logoImg=document.querySelector('.ihead img'), logo=logoImg?logoImg.src:'';
+  const box=(inner,bc,pad)=>`<table width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;margin-top:10pt"><tr><td style="border:1pt solid ${bc};padding:${pad||'4pt 8pt'}">${inner}</td></tr></table>`;
+  const band=(l,r)=>box(`<table width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse"><tr>
+    <td style="${SER};font-size:10.5pt;font-weight:bold;letter-spacing:1pt;color:${C}">${l}</td>
+    <td style="${SER};font-size:10.5pt;font-weight:bold;color:${A};text-align:right">${r||''}</td></tr></table>`,C);
+  const kv=(l,v)=>`<tr><td style="padding:2pt 8pt 2pt 0;border-bottom:.5pt dotted ${LINE};${SANS};font-size:8.5pt;font-weight:bold;color:${C};white-space:nowrap;width:1.1in">${l}</td><td style="padding:2pt 0;border-bottom:.5pt dotted ${LINE};${SANS};font-size:10pt;color:#111">${e(v)}</td></tr>`;
+
+  /* header */
+  const no=g.invNo?(' &nbsp;# '+e(g.invNo)):'', dt=g.invDate?('Date: '+e(fmtD(g.invDate))):'';
+  const head=kitchen
+    ? `<table width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse"><tr><td style="text-align:right;border-bottom:1pt solid #000;padding-bottom:4pt">
+        <div style="${SANS};font-size:12pt;font-weight:bold;letter-spacing:1.5pt;color:#000">KITCHEN ORDER${no}</div><div style="${SANS};font-size:8.5pt;color:#333">${dt}</div></td></tr></table>`
+    : `<table width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse"><tr>
+        <td style="vertical-align:middle;border-bottom:1.5pt solid ${GOLD};padding-bottom:6pt">${logo?`<img src="${logo}" width="110" height="48" style="width:1.15in;height:.5in">`:''}</td>
+        <td style="text-align:right;vertical-align:middle;border-bottom:1.5pt solid ${GOLD};padding-bottom:6pt">
+          <div style="${SER};font-size:14pt;font-weight:bold;color:${G};letter-spacing:.5pt">BOMBAYTALK CATERING SERVICES LLC</div>
+          <div style="${SER};font-size:9.5pt;font-style:italic;color:${GOLD}">Catering &amp; Restaurants</div>
+          <div style="${SANS};font-size:10pt;font-weight:bold;letter-spacing:1.5pt;color:${G}">${e((g.docType||'Invoice').toUpperCase())}<span style="color:${GOLD}">${no}</span></div>
+          <div style="${SANS};font-size:8.5pt;color:${MUT}">${dt}</div></td></tr></table>`;
+
+  /* client + event */
+  const svc=m==='trays'?g.tService:g.eService;
+  const kind=m!=='trays'?'Event Time':(/delivery/i.test(svc||'')?'Delivery Time':(/pickup/i.test(svc||'')?'Pickup Time':'Pickup/Del. Time'));
+  const left=[['Client Name',g.cName]].concat(kitchen?[['Contact',g.cPhone]]:[['Address',g.cAddr],['Contact',g.cPhone],['Email',g.cEmail]]).filter(x=>x[1]);
+  const right=(m==='trays'
+    ? [['Date Needed',g.tDate],['Kitchen Ready',kitchen?g.kTime:''],[kind,g.tTime],['Guests',g.eGuests],['Service',g.tService]]
+    : [['Event Date',g.eDate],['Kitchen Ready',kitchen?g.kTime:''],['Event Time',g.eTime],['Guests',g.eGuests],['Food Type',g.eFood],['Service',g.eService],['Spice',g.eSpice]]).filter(x=>x[1]);
+  const info=`<table width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;margin-top:8pt"><tr>
+    <td style="width:56%;vertical-align:top;padding-right:16pt"><table width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse">${left.map(x=>kv(x[0],x[1])).join('')}</table></td>
+    <td style="vertical-align:top"><table width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse">${right.map(x=>kv(x[0],x[1])).join('')}</table></td></tr></table>`;
+  const kready=kitchen&&g.kTime?`<table cellspacing="0" cellpadding="0" style="border-collapse:collapse;margin-top:8pt"><tr><td style="border:1.5pt solid #000;padding:4pt 10pt;${SANS};font-size:12pt;font-weight:bold">KITCHEN READY ${e(g.kTime)}</td></tr></table>`:'';
+
+  /* package */
+  let pkg='';
+  if(m==='trays'&&typeof btPkg!=='undefined'&&btPkg.pkg&&g.pkgSel===btPkg.pkg){
+    const prem=btPkgPremTotal(), base=t.pkgPer-prem;
+    const per=t.pkgGuests?`${t.pkgGuests} guests · ${money(t.pkgPer)} per person${prem?` (${money(base)} + ${money(prem)} premium)`:''}`:'';
+    const L=btPkg.slots.filter(s=>s.dish).map(s=>`<tr><td style="padding:2.5pt 8pt 2.5pt 0;border-bottom:.5pt solid ${ROW};${SANS};font-size:8.5pt;color:${kitchen?'#333':MUT};width:1in">${e(s.l)}</td>
+      <td style="padding:2.5pt 0;border-bottom:.5pt solid ${ROW};${SANS};font-size:10pt;font-weight:${kitchen?'bold':'normal'};color:#111">${e(s.dish)}</td>
+      <td style="padding:2.5pt 0;border-bottom:.5pt solid ${ROW};${SANS};font-size:9pt;color:${GOLD};text-align:right">${!kitchen&&+s.prem?'+'+money(+s.prem)+' / person':''}</td></tr>`).join('');
+    pkg=`<table width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;margin-top:8pt"><tr><td style="border:1pt solid ${C};padding:5pt 9pt">
+      <table width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse"><tr>
+        <td style="${SER};font-size:11pt;font-weight:bold;color:${C};border-bottom:1pt solid ${A};padding-bottom:3pt">${e(btPkg.pkg.toUpperCase())}</td>
+        <td style="${SANS};font-size:9pt;color:${C};text-align:right;border-bottom:1pt solid ${A};padding-bottom:3pt">${kitchen?'':e(per)}</td></tr></table>
+      <table width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse">${L}
+        <tr><td style="padding:2.5pt 8pt 2.5pt 0;${SANS};font-size:8.5pt;color:${MUT}">Included</td><td colspan="2" style="padding:2.5pt 0;${SANS};font-size:9.5pt;color:${MUT}">${e(typeof BT_PKG_FIXED!=='undefined'?BT_PKG_FIXED:'')}</td></tr></table>
+    </td></tr></table>`;
+  }
+
+  /* items */
+  const rows=t.rows.filter(r=>r.desc||r.amt||r.opt).filter(r=>!(kitchen&&r.opt));
+  const th=(l,al,w)=>`<td style="${w?'width:'+w+';':''}padding:3pt 5pt;border-top:1pt solid ${A};border-bottom:1.5pt solid ${C};${SANS};font-size:8pt;font-weight:bold;letter-spacing:.8pt;color:${C};text-align:${al||'left'}">${l}</td>`;
+  const td=(v,al,x)=>`<td style="padding:4pt 5pt;border-bottom:.5pt solid ${ROW};${SANS};font-size:10pt;color:#111;text-align:${al||'left'};${x||''}">${v}</td>`;
+  const items=rows.length?`<table width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;margin-top:6pt">
+    <tr>${th('QTY','center','.5in')}${m==='trays'?th('SIZE','center','.55in'):''}${th('DESCRIPTION')}${kitchen?'':th('UNIT PRICE','right','.9in')+th('AMOUNT','right','.95in')}</tr>
+    ${rows.map(r=>`<tr>${td(e(r.q||''),'center',kitchen?'font-weight:bold':'')}${m==='trays'?td(e(r.size||'—'),'center','font-size:9pt'):''}${td(e(r.desc),'left',(r.opt?'font-style:italic;':'')+(kitchen?'font-weight:bold':''))}${kitchen?'':td(r.p?money(r.p):'','right')+td(r.amt?money(r.amt):(r.opt?'Included':''),'right','font-size:9.5pt')}</tr>`).join('')}
+  </table>`:'';
+
+  /* kitchen: send with the order */
+  let send='';
+  if(kitchen){
+    const L=t.rows.filter(r=>r.opt&&r.desc).map(r=>[r.q,r.desc]);
+    if(m==='trays'&&+g.hotbox>0) L.push(['','Hot boxes / igloos (refundable deposit taken)']);
+    if(svc&&/setup|service/i.test(svc)&&!L.some(x=>String(x[1]).toLowerCase().indexOf(svc.toLowerCase())>=0)) L.push(['',svc]);
+    if(L.length) send=`<table width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;margin-top:10pt"><tr><td style="border:1pt solid #000;padding:5pt 9pt">
+      <div style="${SANS};font-size:9pt;letter-spacing:1.2pt;margin-bottom:3pt">SEND WITH THE ORDER</div>
+      <table width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse">${L.map(x=>`<tr><td style="width:.25in;padding:2.5pt 0;border-bottom:.5pt solid #ddd;${SANS};font-size:10pt">&#9744;</td><td style="width:.45in;padding:2.5pt 0;border-bottom:.5pt solid #ddd;${SANS};font-size:10pt;font-weight:bold;text-align:right">${x[0]?e(x[0])+' ×':''}</td><td style="padding:2.5pt 6pt;border-bottom:.5pt solid #ddd;${SANS};font-size:10pt">${e(x[1])}</td></tr>`).join('')}</table>
+    </td></tr></table>`;
+  }
+
+  /* bottom: payments + notes | totals */
+  const notes=g.notes?`${band('NOTES / SPECIAL INSTRUCTIONS','')}<table width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;margin-top:3pt"><tr><td style="border:.75pt solid ${LINE};padding:5pt 7pt;${SANS};font-size:10pt">${e(g.notes)}</td></tr></table>`:'';
+  let bottom='';
+  if(kitchen){ bottom=notes; }
+  else{
+    const tr=(l,v,big)=>big
+      ? `<tr><td style="padding:4pt 8pt;border-top:1.5pt solid ${G};${SER};font-size:11.5pt;font-weight:bold;color:${G}">${l}</td><td style="padding:4pt 8pt;border-top:1.5pt solid ${G};${SER};font-size:11.5pt;font-weight:bold;color:${G};text-align:right">${v}</td></tr>`
+      : `<tr><td style="padding:2.5pt 8pt;border-bottom:.5pt solid ${ROW};${SANS};font-size:9pt;color:${MUT}">${l}</td><td style="padding:2.5pt 8pt;border-bottom:.5pt solid ${ROW};${SANS};font-size:9.5pt;font-weight:bold;color:#111;text-align:right">${v}</td></tr>`;
+    let tot='';
+    if(t.food>0.0001||!t.pkgAmt) tot+=tr('Food Subtotal',money(t.food));
+    if(t.pkgAmt>0.0001) tot+=tr(e(t.pkgName.replace('Catering ',''))+' · '+t.pkgGuests+' × '+money(t.pkgPer),money(t.pkgAmt));
+    if(t.disc>0.0001) tot+=tr('Food Discount','-'+money(t.disc));
+    if(m==='catering'&&t.other>0.0001) tot+=tr('Other Charges',money(t.other));
+    if(t.delFee>0.0001) tot+=tr('Delivery Fee',money(t.delFee));
+    if(t.disc>0.0001||t.other>0.0001||t.delFee>0.0001) tot+=tr('Subtotal',money(t.sub));
+    if(t.tax>0.0001) tot+=tr('Sales Tax',money(t.tax));
+    if(t.grat>0.0001) tot+=tr('Gratuity',money(t.grat));
+    tot+=tr('TOTAL',money(t.total),true);
+    if(t.paid>0.0001) tot+=tr('Paid / Deposits',money(t.paid));
+    tot+=tr('BALANCE DUE',money(t.bal),true);
+    if(t.dep>0.0001) tot+=tr('+ Refundable Deposit',money(t.dep));
+    const pm=(gather().pmts||[]).filter(p=>p.amount||p.ref);
+    const pmt=`${band('PAYMENTS &amp; DEPOSITS','')}
+      ${pm.length?`<table width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;margin-top:3pt"><tr>${th('AMOUNT','right','1in')}${th('DATE / REFERENCE')}</tr>${pm.map(p=>`<tr>${td(p.amount?money(parseFloat(p.amount)):'','right')}${td(e(p.ref))}</tr>`).join('')}</table>`:`<div style="${SANS};font-size:9pt;color:${MUT};padding:4pt 2pt">No payments recorded yet.</div>`}
+      ${m==='trays'?`<div style="${SANS};font-size:8pt;font-style:italic;color:${MUT};padding-top:3pt">Balance due on pickup/delivery. Returnable equipment deposit refunded when hot boxes/igloos are returned.</div>`:''}`;
+    bottom=`<table width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;margin-top:4pt"><tr>
+      <td style="width:56%;vertical-align:top;padding-right:14pt">${pmt}${notes}</td>
+      <td style="vertical-align:top;padding-top:10pt"><table width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse"><tr><td style="border:1pt solid ${GOLD};padding:0"><table width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse">${tot}</table></td></tr></table></td></tr></table>`;
+  }
+  const foot=kitchen?'':`<table width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;margin-top:14pt"><tr><td style="border-top:1pt solid ${GOLD};padding-top:4pt;text-align:center;${SANS};font-size:8pt;color:${MUT}">Bombaytalk Catering Services LLC · New Jersey · Tax applied at 6.625% (NJ) · Thank you for your business</td></tr></table>`;
+
+  const section=band(m==='trays'?'PARTY TRAYS — TO GO':'MENU &amp; PRICING',e(svc||''));
+  const body=`<div class="WordSection1" style="${SANS};font-size:10pt;color:#111">${head}${info}${kready}${section}${pkg}${items}${send}${bottom}${foot}</div>`;
+  const title=kitchen?'Kitchen Order':(g.docType||'Invoice');
+  /* Word keeps text styles best on a paragraph inside the cell, not on the cell itself */
+  const TXT=/^(font|color|letter-spacing|white-space)/;
+  const fix=h=>h.replace(/<td([^>]*?)style="([^"]*)"([^>]*)>((?:(?!<\/?td|<table)[\s\S])*?)<\/td>/g,(all,a,st,b,inner)=>{
+    const parts=st.split(';').map(x=>x.trim()).filter(Boolean), box=[], txt=[];
+    parts.forEach(x=>(TXT.test(x)?txt:box).push(x));
+    const ta=parts.find(x=>/^text-align/.test(x)); if(ta) txt.push(ta);
+    return `<td${a}style="${box.join(';')}"${b}><p style="margin:0;${txt.join(';')}">${inner||'&nbsp;'}</p></td>`; });
+  return fix(`<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><title>${e(title)}</title>
+<style>@page WordSection1{size:8.5in 11.0in;margin:.5in .55in .5in .55in}div.WordSection1{page:WordSection1}table{mso-table-lspace:0;mso-table-rspace:0}td{mso-line-height-rule:exactly}p,p.MsoNormal{margin:0;line-height:115%}</style></head><body>${body}</body></html>`);
+};
+</script>
+<script>
+/* ---------- 📄 Word = a real .docx in the outline look (no filled colors, printer friendly, fully editable) ---------- */
+let btDocxLib=null;
+function btLoadDocx(){
+  if(window.docx) return Promise.resolve();
+  if(!btDocxLib) btDocxLib=btLoadJs('https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.js').catch(e=>{btDocxLib=null;throw e;});
+  return btDocxLib;
+}
+async function btDocxBlob(){
+  await btLoadDocx();
+  const D=window.docx, {Document,Packer,Paragraph,TextRun,TableRow,WidthType,BorderStyle,AlignmentType,ImageRun,VerticalAlign,TableLayoutType}=D;
+  const RT=o=>{ if(o.width&&o.width.size!=null) o.width.size=Math.round(o.width.size); if(o.columnWidths) o.columnWidths=o.columnWidths.map(Math.round); if(o.margins) Object.keys(o.margins).forEach(k=>o.margins[k]=Math.round(o.margins[k])); return o; };
+  const Table=function(o){ return new D.Table(RT(o)); }, TableCell=function(o){ return new D.TableCell(RT(o)); };
+  const g=gather().fields, t=computeTotals(), m=t.mode, kitchen=document.body.classList.contains('kitchen');
+  const G=kitchen?'000000':'1F3D2B', GOLD=kitchen?'000000':'A8843A', LINE='D9CFB8', ROW='E5DDCB', MUT=kitchen?'333333':'5E5A50', INK='111111';
+  const SER='Georgia', SANS='Arial';
+  const PW=Math.round(7.4*1440);   // usable width in twips (8.5in - 2 x 0.55in)
+  const NB={style:BorderStyle.NONE,size:0,color:'FFFFFF'};
+  const NOB={top:NB,bottom:NB,left:NB,right:NB,insideHorizontal:NB,insideVertical:NB};
+  const b=(color,size,style)=>({style:style||BorderStyle.SINGLE,size:size||4,color});
+  const run=(text,o)=>new TextRun(Object.assign({text:String(text==null?'':text),font:SANS,size:20,color:INK},o||{}));
+  const para=(runs,o)=>new Paragraph(Object.assign({children:Array.isArray(runs)?runs:[runs],spacing:{before:0,after:0,line:264,lineRule:'auto'}},o||{}));
+  const cell=(children,o)=>new TableCell(Object.assign({children:Array.isArray(children)?children:[children],borders:{top:NB,bottom:NB,left:NB,right:NB},margins:{top:40,bottom:40,left:80,right:80},verticalAlign:VerticalAlign.CENTER},o||{}));
+  const table=(rows,widths,o)=>new Table(Object.assign({rows,width:{size:PW,type:WidthType.DXA},columnWidths:widths,layout:TableLayoutType.FIXED,borders:NOB},o||{}));
+  const gap=(pt)=>para(run('',{size:Math.round((pt||6)*2)}),{spacing:{before:0,after:0,line:Math.round((pt||6)*20),lineRule:'exact'}});
+  const out=[];
+
+  /* header */
+  const no=g.invNo?'  # '+g.invNo:'', dt=g.invDate?'Date: '+fmtD(g.invDate):'';
+  if(kitchen){
+    out.push(para([run('KITCHEN ORDER'+no,{bold:true,size:24,characterSpacing:30})],{alignment:AlignmentType.RIGHT}));
+    if(dt) out.push(para(run(dt,{size:17,color:'333333'}),{alignment:AlignmentType.RIGHT}));
+    out.push(para(run(''),{border:{bottom:b('000000',6)},spacing:{after:120}}));
+  }else{
+    const img=document.querySelector('.ihead img'); let logo=null;
+    try{ if(img&&/^data:image\/png;base64,/.test(img.src)){ const bin=atob(img.src.split(',')[1]); const u=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) u[i]=bin.charCodeAt(i);
+      logo=new ImageRun({data:u,transformation:{width:115,height:50}}); } }catch(e){}
+    const right=[para(run('BOMBAYTALK CATERING SERVICES LLC',{font:SER,bold:true,size:28,color:G,characterSpacing:10}),{alignment:AlignmentType.RIGHT}),
+      para(run('Catering & Restaurants',{font:SER,italics:true,size:19,color:GOLD}),{alignment:AlignmentType.RIGHT}),
+      para([run((g.docType||'Invoice').toUpperCase(),{bold:true,size:20,color:G,characterSpacing:30}),run(no,{bold:true,size:20,color:GOLD})],{alignment:AlignmentType.RIGHT})];
+    if(dt) right.push(para(run(dt,{size:17,color:MUT}),{alignment:AlignmentType.RIGHT}));
+    out.push(table([new TableRow({children:[cell(logo?new Paragraph({children:[logo]}):para(run('')),{width:{size:PW*0.3,type:WidthType.DXA},margins:{top:0,bottom:60,left:0,right:0}}),
+      cell(right,{width:{size:PW*0.7,type:WidthType.DXA},margins:{top:0,bottom:60,left:0,right:0}})]})],[PW*0.3,PW*0.7]));
+    out.push(para(run(''),{border:{bottom:b('A8843A',8)},spacing:{after:120}}));
+  }
+
+  /* client + event (4 columns: label value | label value) */
+  const svc=m==='trays'?g.tService:g.eService;
+  const kind=m!=='trays'?'Event Time':(/delivery/i.test(svc||'')?'Delivery Time':(/pickup/i.test(svc||'')?'Pickup Time':'Pickup/Del. Time'));
+  const L=[['Client Name',g.cName]].concat(kitchen?[['Contact',g.cPhone]]:[['Address',g.cAddr],['Contact',g.cPhone],['Email',g.cEmail]]).filter(x=>x[1]);
+  const R=(m==='trays'?[['Date Needed',g.tDate],['Kitchen Ready',kitchen?g.kTime:''],[kind,g.tTime],['Guests',g.eGuests],['Service',g.tService]]
+    :[['Event Date',g.eDate],['Kitchen Ready',kitchen?g.kTime:''],['Event Time',g.eTime],['Guests',g.eGuests],['Food Type',g.eFood],['Service',g.eService],['Spice',g.eSpice]]).filter(x=>x[1]);
+  const W4=[PW*0.15,PW*0.39,PW*0.16,PW*0.30], dot={bottom:b(LINE,4,BorderStyle.DOTTED),top:NB,left:NB,right:NB};
+  const kvc=(x,i,last)=>[cell(para(run(x?x[0]:'',{bold:true,size:17,color:G})),{width:{size:W4[i],type:WidthType.DXA},borders:x?dot:{top:NB,bottom:NB,left:NB,right:NB},margins:{top:50,bottom:50,left:0,right:60}}),
+    cell(para(run(x?x[1]:'',{size:20,bold:!!(kitchen&&x&&x[0]==='Kitchen Ready')})),{width:{size:W4[i+1],type:WidthType.DXA},borders:x?dot:{top:NB,bottom:NB,left:NB,right:NB},margins:{top:50,bottom:50,left:0,right:last?0:240}})];
+  const n=Math.max(L.length,R.length), rows=[];
+  for(let i=0;i<n;i++) rows.push(new TableRow({children:kvc(L[i],0).concat(kvc(R[i],2,true))}));
+  if(rows.length) out.push(table(rows,W4));
+
+  /* kitchen ready box */
+  if(kitchen&&g.kTime){ out.push(gap(8)); const KW=Math.round(PW*0.4); out.push(new Table({rows:[new TableRow({children:[cell(para(run('KITCHEN READY  '+g.kTime,{bold:true,size:26}),{alignment:AlignmentType.CENTER}),{width:{size:KW,type:WidthType.DXA},borders:{top:b('000000',12),bottom:b('000000',12),left:b('000000',12),right:b('000000',12)},margins:{top:90,bottom:90,left:160,right:160}})]})],width:{size:KW,type:WidthType.DXA},columnWidths:[KW],layout:TableLayoutType.FIXED,borders:NOB})); }
+
+  /* section band (outline only) */
+  const band=(l,r)=>table([new TableRow({children:[
+    cell(para(run(l,{font:SER,bold:true,size:21,color:G,characterSpacing:20})),{width:{size:PW*0.6,type:WidthType.DXA},borders:{top:b(G,6),bottom:b(G,6),left:b(G,6),right:NB},margins:{top:70,bottom:70,left:140,right:60}}),
+    cell(para(run(r||'',{font:SER,bold:true,size:21,color:GOLD}),{alignment:AlignmentType.RIGHT}),{width:{size:PW*0.4,type:WidthType.DXA},borders:{top:b(G,6),bottom:b(G,6),right:b(G,6),left:NB},margins:{top:70,bottom:70,left:60,right:140}})]})],[PW*0.6,PW*0.4]);
+  out.push(gap(10)); out.push(band(m==='trays'?'PARTY TRAYS — TO GO':'MENU & PRICING',svc||''));
+
+  /* package */
+  if(m==='trays'&&typeof btPkg!=='undefined'&&btPkg.pkg&&g.pkgSel===btPkg.pkg){
+    const prem=btPkgPremTotal(), base=t.pkgPer-prem;
+    const per=(!kitchen&&t.pkgGuests)?`${t.pkgGuests} guests · ${money(t.pkgPer)} per person${prem?` (${money(base)} + ${money(prem)} premium)`:''}`:'';
+    const PI=PW-280, WP=[PI*0.2,PI*0.55,PI*0.25];
+    const li={bottom:b(ROW,4),top:NB,left:NB,right:NB};
+    const prow=(a,d,p,bold)=>new TableRow({children:[cell(para(run(a,{size:17,color:MUT})),{width:{size:WP[0],type:WidthType.DXA},borders:li,margins:{top:40,bottom:40,left:0,right:60}}),
+      cell(para(run(d,{size:20,bold:!!bold})),{width:{size:WP[1],type:WidthType.DXA},borders:li,margins:{top:40,bottom:40,left:0,right:60}}),
+      cell(para(run(p,{size:18,color:GOLD}),{alignment:AlignmentType.RIGHT}),{width:{size:WP[2],type:WidthType.DXA},borders:li,margins:{top:40,bottom:40,left:0,right:0}})]});
+    const inner=[new Table({rows:[new TableRow({children:[
+        cell(para(run(btPkg.pkg.toUpperCase(),{font:SER,bold:true,size:22,color:G})),{width:{size:PI*0.45,type:WidthType.DXA},borders:{bottom:b(GOLD,6),top:NB,left:NB,right:NB},margins:{top:0,bottom:60,left:0,right:0}}),
+        cell(para(run(per,{size:18,color:G}),{alignment:AlignmentType.RIGHT}),{width:{size:PI*0.55,type:WidthType.DXA},borders:{bottom:b(GOLD,6),top:NB,left:NB,right:NB},margins:{top:0,bottom:60,left:0,right:0}})]})],
+        width:{size:PI,type:WidthType.DXA},columnWidths:[PI*0.45,PI*0.55],layout:TableLayoutType.FIXED,borders:NOB}),
+      new Table({rows:btPkg.slots.filter(s=>s.dish).map(s=>prow(s.l,s.dish,!kitchen&&+s.prem?'+'+money(+s.prem)+' / person':'',kitchen)).concat([prow('Included',typeof BT_PKG_FIXED!=='undefined'?BT_PKG_FIXED:'','')]),
+        width:{size:PI,type:WidthType.DXA},columnWidths:WP,layout:TableLayoutType.FIXED,borders:NOB})];
+    out.push(gap(8));
+    out.push(table([new TableRow({children:[cell(inner,{borders:{top:b(G,6),bottom:b(G,6),left:b(G,6),right:b(G,6)},margins:{top:100,bottom:100,left:140,right:140}})]})],[PW]));
+  }
+
+  /* items */
+  const items=t.rows.filter(r=>r.desc||r.amt||r.opt).filter(r=>!(kitchen&&r.opt));
+  if(items.length){
+    const cols=kitchen?(m==='trays'?[PW*0.1,PW*0.12,PW*0.78]:[PW*0.1,PW*0.9]):(m==='trays'?[PW*0.08,PW*0.09,PW*0.53,PW*0.15,PW*0.15]:[PW*0.09,PW*0.61,PW*0.15,PW*0.15]);
+    const hd=(kitchen?['QTY'].concat(m==='trays'?['SIZE']:[],['DESCRIPTION']):['QTY'].concat(m==='trays'?['SIZE']:[],['DESCRIPTION','UNIT PRICE','AMOUNT']));
+    const al=i=>{const h=hd[i]; return h==='QTY'||h==='SIZE'?AlignmentType.CENTER:(h==='UNIT PRICE'||h==='AMOUNT'?AlignmentType.RIGHT:AlignmentType.LEFT);};
+    const head=new TableRow({tableHeader:true,children:hd.map((h,i)=>cell(para(run(h,{bold:true,size:16,color:G,characterSpacing:15}),{alignment:al(i)}),{width:{size:cols[i],type:WidthType.DXA},borders:{top:b(GOLD,4),bottom:b(G,8),left:NB,right:NB},margins:{top:60,bottom:60,left:80,right:80}}))});
+    const body=items.map(r=>{
+      const v=[String(r.q||'')].concat(m==='trays'?[r.size||'—']:[],[r.desc]).concat(kitchen?[]:[r.p?money(r.p):'',r.amt?money(r.amt):(r.opt?'Included':'')]);
+      return new TableRow({cantSplit:true,children:v.map((x,i)=>cell(para(run(x,{size:hd[i]==='SIZE'?18:20,italics:!!(r.opt&&hd[i]==='DESCRIPTION'),bold:!!(kitchen&&(hd[i]==='QTY'||hd[i]==='DESCRIPTION'))}),{alignment:al(i)}),
+        {width:{size:cols[i],type:WidthType.DXA},borders:{bottom:b(ROW,4),top:NB,left:NB,right:NB},margins:{top:70,bottom:70,left:80,right:80}}))});
+    });
+    out.push(gap(6)); out.push(table([head].concat(body),cols));
+  }
+
+  /* kitchen: send with the order */
+  if(kitchen){
+    const S=t.rows.filter(r=>r.opt&&r.desc).map(r=>[r.q,r.desc]);
+    if(m==='trays'&&+g.hotbox>0) S.push(['','Hot boxes / igloos (refundable deposit taken)']);
+    if(svc&&/setup|service/i.test(svc)&&!S.some(x=>String(x[1]).toLowerCase().indexOf(svc.toLowerCase())>=0)) S.push(['',svc]);
+    if(S.length){
+      const PI=PW-280, WS=[PI*0.06,PI*0.1,PI*0.84], li={bottom:b('DDDDDD',4),top:NB,left:NB,right:NB};
+      const inner=[para(run('SEND WITH THE ORDER',{size:18,characterSpacing:25}),{spacing:{after:60}}),
+        new Table({rows:S.map(x=>new TableRow({children:[cell(para(run('☐',{size:20})),{width:{size:WS[0],type:WidthType.DXA},borders:li,margins:{top:40,bottom:40,left:0,right:0}}),
+          cell(para(run(x[0]?x[0]+' ×':'',{size:20,bold:true}),{alignment:AlignmentType.RIGHT}),{width:{size:WS[1],type:WidthType.DXA},borders:li,margins:{top:40,bottom:40,left:0,right:100}}),
+          cell(para(run(x[1],{size:20})),{width:{size:WS[2],type:WidthType.DXA},borders:li,margins:{top:40,bottom:40,left:0,right:0}})]})),
+          width:{size:PI,type:WidthType.DXA},columnWidths:WS,layout:TableLayoutType.FIXED,borders:NOB})];
+      out.push(gap(10)); out.push(table([new TableRow({children:[cell(inner,{borders:{top:b('000000',6),bottom:b('000000',6),left:b('000000',6),right:b('000000',6)},margins:{top:100,bottom:100,left:140,right:140}})]})],[PW]));
+    }
+  }
+
+  /* notes block (used in both) */
+  const notesBlock=(w)=>!g.notes?[]:[gap(10),
+    new Table({rows:[new TableRow({children:[cell(para(run('NOTES / SPECIAL INSTRUCTIONS',{font:SER,bold:true,size:19,color:kitchen?'000000':GOLD,characterSpacing:20})),{borders:{top:b(G,6),bottom:b(G,6),left:b(G,6),right:b(G,6)},margins:{top:60,bottom:60,left:140,right:140}})]}),
+      new TableRow({children:[cell(String(g.notes).split('\n').map(l=>para(run(l,{size:20}))),{borders:{top:NB,bottom:b(LINE,4),left:b(LINE,4),right:b(LINE,4)},margins:{top:100,bottom:100,left:140,right:140}})]})],
+      width:{size:w,type:WidthType.DXA},columnWidths:[w],layout:TableLayoutType.FIXED,borders:NOB})];
+
+  if(kitchen){ out.push(...notesBlock(PW)); }
+  else{
+    /* totals */
+    const TW=PW*0.4, TL=[TW*0.62,TW*0.38], tr=[];
+    const trow=(l,v,big)=>new TableRow({cantSplit:true,children:[
+      cell(para(run(l,big?{font:SER,bold:true,size:23,color:G}:{size:18,color:MUT})),{width:{size:TL[0],type:WidthType.DXA},borders:big?{top:b(G,8),bottom:NB,left:NB,right:NB}:{bottom:b(ROW,4),top:NB,left:NB,right:NB},margins:{top:big?90:50,bottom:big?90:50,left:140,right:60}}),
+      cell(para(run(v,big?{font:SER,bold:true,size:23,color:G}:{size:19,bold:true}),{alignment:AlignmentType.RIGHT}),{width:{size:TL[1],type:WidthType.DXA},borders:big?{top:b(G,8),bottom:NB,left:NB,right:NB}:{bottom:b(ROW,4),top:NB,left:NB,right:NB},margins:{top:big?90:50,bottom:big?90:50,left:60,right:140}})]});
+    if(t.food>0.0001||!t.pkgAmt) tr.push(trow('Food Subtotal',money(t.food)));
+    if(t.pkgAmt>0.0001) tr.push(trow(t.pkgName.replace('Catering ','')+' · '+t.pkgGuests+' × '+money(t.pkgPer),money(t.pkgAmt)));
+    if(t.disc>0.0001) tr.push(trow('Food Discount','-'+money(t.disc)));
+    if(m==='catering'&&t.other>0.0001) tr.push(trow('Other Charges',money(t.other)));
+    if(t.delFee>0.0001) tr.push(trow('Delivery Fee',money(t.delFee)));
+    if(t.disc>0.0001||t.other>0.0001||t.delFee>0.0001) tr.push(trow('Subtotal',money(t.sub)));
+    if(t.tax>0.0001) tr.push(trow('Sales Tax',money(t.tax)));
+    if(t.grat>0.0001) tr.push(trow('Gratuity',money(t.grat)));
+    tr.push(trow('TOTAL',money(t.total),true));
+    if(t.paid>0.0001) tr.push(trow('Paid / Deposits',money(t.paid)));
+    tr.push(trow('BALANCE DUE',money(t.bal),true));
+    if(t.dep>0.0001) tr.push(trow('+ Refundable Deposit',money(t.dep)));
+    const totals=new Table({rows:[new TableRow({children:[cell([new Table({rows:tr,width:{size:TW-40,type:WidthType.DXA},columnWidths:TL.map(x=>x-20),layout:TableLayoutType.FIXED,borders:NOB})],{borders:{top:b('A8843A',6),bottom:b('A8843A',6),left:b('A8843A',6),right:b('A8843A',6)},margins:{top:0,bottom:0,left:0,right:0}})]})],
+      width:{size:TW,type:WidthType.DXA},columnWidths:[TW],layout:TableLayoutType.FIXED,borders:NOB});
+    /* payments */
+    const LW=PW*0.56, pm=(gather().pmts||[]).filter(p=>p.amount||p.ref);
+    const left=[new Table({rows:[new TableRow({children:[cell(para(run('PAYMENTS & DEPOSITS',{font:SER,bold:true,size:21,color:G,characterSpacing:20})),{borders:{top:b(G,6),bottom:b(G,6),left:b(G,6),right:b(G,6)},margins:{top:70,bottom:70,left:140,right:140}})]})],width:{size:LW,type:WidthType.DXA},columnWidths:[LW],layout:TableLayoutType.FIXED,borders:NOB})];
+    if(pm.length){
+      const PWc=[LW*0.3,LW*0.7];
+      left.push(new Table({rows:[new TableRow({children:['AMOUNT','DATE / REFERENCE'].map((h,i)=>cell(para(run(h,{bold:true,size:16,color:G,characterSpacing:15}),{alignment:i?AlignmentType.LEFT:AlignmentType.RIGHT}),{width:{size:PWc[i],type:WidthType.DXA},borders:{bottom:b(G,6),top:NB,left:NB,right:NB},margins:{top:60,bottom:60,left:80,right:80}}))})]
+        .concat(pm.map(p=>new TableRow({children:[cell(para(run(p.amount?money(parseFloat(p.amount)):'',{size:20}),{alignment:AlignmentType.RIGHT}),{width:{size:PWc[0],type:WidthType.DXA},borders:{bottom:b(ROW,4),top:NB,left:NB,right:NB}}),
+          cell(para(run(p.ref||'',{size:20})),{width:{size:PWc[1],type:WidthType.DXA},borders:{bottom:b(ROW,4),top:NB,left:NB,right:NB}})]}))),
+        width:{size:LW,type:WidthType.DXA},columnWidths:PWc,layout:TableLayoutType.FIXED,borders:NOB}));
+    } else left.push(para(run('No payments recorded yet.',{size:18,color:MUT}),{spacing:{before:80}}));
+    if(m==='trays') left.push(para(run('Balance due on pickup/delivery. Returnable equipment deposit refunded when hot boxes/igloos are returned.',{size:16,italics:true,color:MUT}),{spacing:{before:80}}));
+    left.push(...notesBlock(LW));
+    out.push(gap(10));
+    out.push(table([new TableRow({cantSplit:true,children:[cell(left,{width:{size:PW*0.58,type:WidthType.DXA},verticalAlign:VerticalAlign.TOP,margins:{top:0,bottom:0,left:0,right:0}}),
+      cell([totals],{width:{size:PW*0.42,type:WidthType.DXA},verticalAlign:VerticalAlign.TOP,margins:{top:0,bottom:0,left:PW*0.02,right:0}})]})],[PW*0.58,PW*0.42]));
+    out.push(para(run('Bombaytalk Catering Services LLC · New Jersey · Tax applied at 6.625% (NJ) · Thank you for your business',{size:16,color:MUT}),{alignment:AlignmentType.CENTER,border:{top:b('A8843A',6)},spacing:{before:280}}));
+  }
+
+  const doc=new Document({creator:'Bombaytalk Catering Services LLC',title:kitchen?'Kitchen Order':(g.docType||'Invoice'),
+    styles:{default:{document:{run:{font:SANS,size:20}}}},
+    sections:[{properties:{page:{size:{width:12240,height:15840},margin:{top:720,bottom:720,left:792,right:792}}},children:out}]});
+  return Packer.toBlob(doc);
+}
+window.exportWord=async function(){
+  stripBlank();
+  flash('Making the Word file…');
+  try{
+    const blob=await btDocxBlob();
+    const kitchen=document.body.classList.contains('kitchen'), no=$('invNo').value, nm=$('cName').value.trim();
+    const name=(kitchen?'Kitchen Order':($('docType').value||'Invoice'))+(no?' '+no:'')+(nm?' - '+nm.replace(/[\\/:*?"<>|]+/g,''):'');
+    dl(blob,name+'.docx'); flash('Word file saved: '+name+'.docx');
+  }catch(e){ console.error(e); alert('Could not make the Word file. Check the internet and try again.'); }
+};
+</script>
 </body>
 </html>
