@@ -1860,7 +1860,7 @@ window.wordHTML=function(){
   if(m==='trays'&&typeof btPkg!=='undefined'&&btPkg.pkg&&g.pkgSel===btPkg.pkg){
     const prem=btPkgPremTotal(), base=t.pkgPer-prem;
     const per=t.pkgGuests?`${t.pkgGuests} guests · ${money(t.pkgPer)} per person${prem?` (${money(base)} + ${money(prem)} premium)`:''}`:'';
-    const L=btPkg.slots.filter(s=>s.dish).map(s=>`<tr><td style="padding:2.5pt 8pt 2.5pt 0;border-bottom:.5pt solid ${ROW};${SANS};font-size:8.5pt;color:${kitchen?'#333':MUT};width:1in">${e(s.l)}</td>
+    const L=btPkg.slots.filter(s=>s.dish).map(s=>`<tr><td style="padding:2.5pt 8pt 2.5pt 0;border-bottom:.5pt solid ${ROW};${SANS};font-size:10pt;font-weight:bold;color:${C};width:1in">${e(s.l)}</td>
       <td style="padding:2.5pt 0;border-bottom:.5pt solid ${ROW};${SANS};font-size:10pt;font-weight:${kitchen?'bold':'normal'};color:#111">${e(s.dish)}</td>
       <td style="padding:2.5pt 0;border-bottom:.5pt solid ${ROW};${SANS};font-size:9pt;color:${GOLD};text-align:right">${!kitchen&&+s.prem?'+'+money(+s.prem)+' / person':''}</td></tr>`).join('');
     pkg=`<table width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;margin-top:8pt"><tr><td style="border:1pt solid ${C};padding:5pt 9pt">
@@ -2012,14 +2012,14 @@ async function btDocxBlob(){
     const per=(!kitchen&&t.pkgGuests)?`${t.pkgGuests} guests · ${money(t.pkgPer)} per person${prem?` (${money(base)} + ${money(prem)} premium)`:''}`:'';
     const PI=PW-280, WP=[PI*0.2,PI*0.55,PI*0.25];
     const li={bottom:b(ROW,4),top:NB,left:NB,right:NB};
-    const prow=(a,d,p,bold)=>new TableRow({children:[cell(para(run(a,{size:17,color:MUT})),{width:{size:WP[0],type:WidthType.DXA},borders:li,margins:{top:40,bottom:40,left:0,right:60}}),
+    const prow=(a,d,p,bold)=>new TableRow({children:[cell(para(run(a,{size:20,bold:true,color:G})),{width:{size:WP[0],type:WidthType.DXA},borders:li,margins:{top:40,bottom:40,left:0,right:60}}),
       cell(para(run(d,{size:20,bold:!!bold})),{width:{size:WP[1],type:WidthType.DXA},borders:li,margins:{top:40,bottom:40,left:0,right:60}}),
       cell(para(run(p,{size:18,color:GOLD}),{alignment:AlignmentType.RIGHT}),{width:{size:WP[2],type:WidthType.DXA},borders:li,margins:{top:40,bottom:40,left:0,right:0}})]});
     const inner=[new Table({rows:[new TableRow({children:[
         cell(para(run(btPkg.pkg.toUpperCase(),{font:SER,bold:true,size:22,color:G})),{width:{size:PI*0.45,type:WidthType.DXA},borders:{bottom:b(GOLD,6),top:NB,left:NB,right:NB},margins:{top:0,bottom:60,left:0,right:0}}),
         cell(para(run(per,{size:18,color:G}),{alignment:AlignmentType.RIGHT}),{width:{size:PI*0.55,type:WidthType.DXA},borders:{bottom:b(GOLD,6),top:NB,left:NB,right:NB},margins:{top:0,bottom:60,left:0,right:0}})]})],
         width:{size:PI,type:WidthType.DXA},columnWidths:[PI*0.45,PI*0.55],layout:TableLayoutType.FIXED,borders:NOB}),
-      new Table({rows:btPkg.slots.filter(s=>s.dish).map(s=>prow(s.l,s.dish,!kitchen&&+s.prem?'+'+money(+s.prem)+' / person':'',kitchen)).concat([prow('Included',typeof BT_PKG_FIXED!=='undefined'?BT_PKG_FIXED:'','')]),
+      new Table({rows:btPkg.slots.filter(s=>s.dish).map(s=>prow(s.l,s.dish,!kitchen&&+s.prem?'+'+money(+s.prem)+' / person':'',kitchen)).concat([prow('',typeof BT_PKG_FIXED!=='undefined'?BT_PKG_FIXED:'','')]),
         width:{size:PI,type:WidthType.DXA},columnWidths:WP,layout:TableLayoutType.FIXED,borders:NOB})];
     out.push(gap(8));
     out.push(table([new TableRow({children:[cell(inner,{borders:{top:b(G,6),bottom:b(G,6),left:b(G,6),right:b(G,6)},margins:{top:100,bottom:100,left:140,right:140}})]})],[PW]));
@@ -2028,7 +2028,7 @@ async function btDocxBlob(){
   /* items */
   const items=t.rows.filter(r=>r.desc||r.amt||r.opt).filter(r=>!(kitchen&&r.opt));
   if(items.length){
-    const cols=kitchen?(m==='trays'?[PW*0.1,PW*0.12,PW*0.78]:[PW*0.1,PW*0.9]):(m==='trays'?[PW*0.08,PW*0.09,PW*0.53,PW*0.15,PW*0.15]:[PW*0.09,PW*0.61,PW*0.15,PW*0.15]);
+    const cols=kitchen?(m==='trays'?[PW*0.1,PW*0.12,PW*0.78]:[PW*0.13,PW*0.87]):(m==='trays'?[PW*0.08,PW*0.09,PW*0.53,PW*0.15,PW*0.15]:[PW*0.12,PW*0.58,PW*0.15,PW*0.15]);
     const hd=(kitchen?['QTY'].concat(m==='trays'?['SIZE']:[],['DESCRIPTION']):['QTY'].concat(m==='trays'?['SIZE']:[],['DESCRIPTION','UNIT PRICE','AMOUNT']));
     const al=i=>{const h=hd[i]; return h==='QTY'||h==='SIZE'?AlignmentType.CENTER:(h==='UNIT PRICE'||h==='AMOUNT'?AlignmentType.RIGHT:AlignmentType.LEFT);};
     const head=new TableRow({tableHeader:true,children:hd.map((h,i)=>cell(para(run(h,{bold:true,size:16,color:G,characterSpacing:15}),{alignment:al(i)}),{width:{size:cols[i],type:WidthType.DXA},borders:{top:b(GOLD,4),bottom:b(G,8),left:NB,right:NB},margins:{top:60,bottom:60,left:80,right:80}}))});
@@ -2116,6 +2116,112 @@ window.exportWord=async function(){
     dl(blob,name+'.docx'); flash('Word file saved: '+name+'.docx');
   }catch(e){ console.error(e); alert('Could not make the Word file. Check the internet and try again.'); }
 };
+</script>
+<script>
+/* ---------- Package quantities on the left (100 pcs Samosa, 2 LT Jeera Rice) + PCS / OZ units on every line ---------- */
+/* pieces per person for each slot, by package (MK: #3 = 3 appetizer pcs per person total → 1.5 of each; dessert 1.5) */
+const BT_PKGRATE={
+  "Catering Package #1":{app:1,bread:2,dessert:1},
+  "Catering Package #2":{app:1,bread:1,dessert:1},
+  "Catering Package #3":{app:1.5,bread:1,dessert:1.5}
+};
+/* trays for N guests when it's part of a spread (MK's rule: Small ~20, Medium ~40, Large ~50) */
+function btTraysFor(n){
+  n=Math.ceil(n||0); if(!n) return '';
+  const c={LT:0,MT:0,ST:0};
+  while(n>0){ if(n>40){c.LT++;n-=50;} else if(n>20){c.MT++;n-=40;} else {c.ST++;n-=20;} }
+  return ['LT','MT','ST'].filter(k=>c[k]).map(k=>c[k]+' '+k).join(' + ');
+}
+function btPkgQtyAuto(s){
+  const g=parseFloat($('pkgGuests').value)||0; if(!g||!s||!s.dish) return '';
+  const r=(BT_PKGRATE[btPkg.pkg]||{})[s.k];
+  const pcs=(s.k==='app'||s.k==='bread'||(s.k==='dessert'&&!s.tray));
+  if(pcs&&r) return Math.ceil(g*r)+' pcs';
+  return btTraysFor(g);
+}
+function btPkgQty(s){ return (s&&s.qty)?s.qty:btPkgQtyAuto(s); }
+function btPkgQtySet(i,v){ const s=btPkg.slots[i]; if(!s) return; v=String(v||'').trim(); s.qty=(v&&v!==btPkgQtyAuto(s))?v:''; btPkgSave(); calc(); }
+/* keep a typed quantity when the package is rebuilt */
+const _btPkgBuildQ=window.btPkgBuild;
+window.btPkgBuild=function(name,keep){
+  const old=(keep&&keep.slots)?keep.slots.map(s=>({k:s.k,dish:s.dish,qty:s.qty||'',tray:!!s.tray})):[];
+  _btPkgBuildQ(name,keep);
+  const used={};
+  btPkg.slots.forEach(s=>{ const o=old.filter(x=>x.k===s.k)[(used[s.k]=(used[s.k]||0)+1)-1]; if(o&&o.dish===s.dish){ s.qty=o.qty; s.tray=o.tray; } });
+};
+const _btPkgChooseQ=window.btPkgChoose;
+window.btPkgChoose=function(si,ii){ const s=btPkg.slots[btPkgSlot], it=btMenu&&btMenu[si]&&btMenu[si].items[ii]; if(s&&it){ s.tray=!!it.p; s.qty=''; } return _btPkgChooseQ(si,ii); };
+const _btPkgTypedQ=window.btPkgTyped;
+window.btPkgTyped=function(){ const s=btPkg.slots[btPkgSlot]; if(s){ s.tray=(s.k!=='app'&&s.k!=='bread'&&s.k!=='dessert'); s.qty=''; } return _btPkgTypedQ(); };
+const _btPkgClearQ=window.btPkgClear;
+window.btPkgClear=function(i){ const s=btPkg.slots[i]; if(s){ s.qty=''; s.tray=false; } return _btPkgClearQ(i); };
+
+/* package box: quantity on the left instead of Appetizer / Bread / Rice … */
+window.btPkgRender=function(){
+  const b=$('pkgBlock'); if(!b) return;
+  const tb=$('itemsTbl'); if(tb) tb.classList.toggle('nofood',![...$('itemsBody').querySelectorAll('tr')].some(tr=>tr.dataset.opt!=='1'));
+  const on=document.body.dataset.mode==='trays'&&!!btPkg.pkg&&$('pkgSel').value===btPkg.pkg;
+  b.classList.toggle('on',on); if(!on){ b.innerHTML=''; return; }
+  const g=parseFloat($('pkgGuests').value)||0, t=computeTotals(), prem=btPkgPremTotal();
+  const base=t.pkgPer-prem;
+  const per=g?`${g} guests · ${money(t.pkgPer)} per person${prem?` (${money(base)} + ${money(prem)} premium)`:''}`:'Enter the number of guests';
+  b.innerHTML=`<div class="ph"><b>${esc(btPkg.pkg.toUpperCase())}</b><span class="pr">${esc(per)}</span></div><div class="pls">`+
+    btPkg.slots.map((s,i)=>{ const q=btPkgQty(s);
+      return `<div class="pl"><span class="pq">`+(s.dish?`<input class="pqin" value="${esc(q)}" title="Quantity (changes with guests; type to change it)" onchange="btPkgQtySet(${i},this.value)"><span class="pqt">${esc(q)}</span>`:'')+`</span>`+
+      `<span class="pd${s.dish?'':' empty'}">${s.dish?esc(s.dish):'Choose '+esc(s.l.toLowerCase())+' — '+esc(s.h)}</span>`+
+      (s.dish&&+s.prem?`<span class="pp">✦ +${money(+s.prem)} / person</span>`:'')+
+      `<span class="pc hideprint"><button onclick="btPkgPick(${i})">${s.dish?'Change':'Choose'}</button>`+
+      (s.dish?`<select title="Premium per person" onchange="btPkgPrem(${i},this.value)">${[0,1,2,3].map(v=>`<option value="${v}" ${(+s.prem)===v?'selected':''}>${v?'+$'+v+' / person':'Regular'}</option>`).join('')}</select><button class="px" title="Remove" onclick="btPkgClear(${i})">×</button>`:'')+
+      `</span></div>`; }).join('')+
+    `<div class="pl"><span class="pq"></span><span class="fixed">${esc(BT_PKG_FIXED)} (included)</span></div></div>`;
+};
+/* Word: show the quantity where the slot name was; on catering invoices (no Size column) the unit goes next to the quantity */
+function btUnitRows(){
+  if(document.body.dataset.mode==='trays') return ()=>{};
+  const orig=window.computeTotals;
+  window.computeTotals=function(){ const t=orig.apply(this,arguments); t.rows=t.rows.map(r=>r.size?Object.assign({},r,{q:(r.q||'')+' '+r.size}):r); return t; };
+  return ()=>{ window.computeTotals=orig; };
+}
+const _btDocxBlobQ=window.btDocxBlob;
+if(_btDocxBlobQ) window.btDocxBlob=async function(){
+  const keep=btPkg.slots.map(s=>s.l); btPkg.slots.forEach(s=>{ s.l=btPkgQty(s)||''; }); const ct=btUnitRows();
+  try{ return await _btDocxBlobQ.apply(this,arguments); } finally{ btPkg.slots.forEach((s,i)=>{ s.l=keep[i]; }); ct(); }
+};
+const _btWordHTMLQ=window.wordHTML;
+if(_btWordHTMLQ) window.wordHTML=function(){
+  const keep=btPkg.slots.map(s=>s.l); btPkg.slots.forEach(s=>{ s.l=btPkgQty(s)||''; }); const ct=btUnitRows();
+  try{ return _btWordHTMLQ.apply(this,arguments); } finally{ btPkg.slots.forEach((s,i)=>{ s.l=keep[i]; }); ct(); }
+};
+
+/* ---------- units: PCS and OZ next to the tray sizes, on every invoice ---------- */
+['PCS','OZ'].forEach(u=>{ if(SIZES.indexOf(u)<0) SIZES.push(u); });
+document.querySelectorAll('select.sizesel').forEach(sel=>{ ['PCS','OZ'].forEach(u=>{ if(![...sel.options].some(o=>o.value===u)){ const o=document.createElement('option'); o.value=u; o.textContent=u; sel.appendChild(o); } }); });
+(function(){
+  const th=document.querySelector('#itemsTbl th.sizecol'); if(th) th.textContent='Size / Unit';
+  const st=document.createElement('style'); st.textContent=`
+body[data-mode="catering"] .sizecol{display:table-cell!important}
+#itemsTbl th.sizecol{width:72px!important;white-space:nowrap}
+#pkgBlock .pq{min-width:104px;flex:0 0 104px;font-weight:600;color:#1F3D2B}
+#pkgBlock .pqin{width:96px;font:inherit;font-weight:600;color:#1F3D2B;border:1px solid var(--line);border-radius:6px;padding:4px 6px;background:#fff}
+#pkgBlock .pqt{display:none}
+@media print{ #pkgBlock .pqin{display:none} #pkgBlock .pqt{display:inline} #pkgBlock .pq{min-width:70px;flex:0 0 70px;font-size:12.5px} }
+body.bt-sim #pkgBlock .pqin{display:none} body.bt-sim #pkgBlock .pqt{display:inline}
+body.kitchen #pkgBlock .pq,body.kitchen #pkgBlock .pqin{color:#000!important;font-weight:600!important}
+@media (max-width:640px){ body[data-mode="catering"] #itemsTbl td.sizecol{display:block!important} }
+`; document.head.appendChild(st);
+})();
+/* menu items sold by the piece go in as PCS with a plain name ("Rasgulla", PCS, 20) */
+const _btAddFromMenuQ=window.addFromMenu;
+window.addFromMenu=function(si,ii,size,btn){
+  const it=btMenu&&btMenu[si]&&btMenu[si].items[ii];
+  if(!it||it.p||it.u!=='pc') return _btAddFromMenuQ.apply(this,arguments);
+  const ex=[...$('itemsBody').querySelectorAll('tr')].find(tr=>tr.querySelector('textarea').value===it.n&&((tr.querySelector('.sizesel')||{}).value||'')==='PCS');
+  if(ex){ const qi=ex.querySelector('.qin'); qi.value=(parseFloat(qi.value)||0)+it.q; }
+  else{ addItem({qty:it.q,size:'PCS',desc:it.n,category:'Food',unitPrice:it.each,taxable:true}); const tr=$('itemsBody').lastElementChild; const pin=tr&&tr.querySelector('.pin'); if(pin) pin.dataset.auto=''; }
+  calc(); if(btn){btn.classList.add('added'); btn.textContent='✓ '+btn.textContent.replace(/^✓ /,'');}
+  flash('Added '+it.q+' '+it.n);
+};
+calc();
 </script>
 </body>
 </html>
