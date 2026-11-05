@@ -1699,5 +1699,121 @@ const _btFlashP=window.flash;
 window.flash=function(m){ if(m==='No items on this order yet'&&btPkg.pkg) return; return _btFlashP(m); };
 calc();
 </script>
+<script>
+/* ---------- Print fit (no lonely totals on page 2) + direct "Save PDF" + small logo in Word ---------- */
+const BT_PAGE_W=749, BT_PAGE_H=989;   // Letter 8.5x11 minus .35in margins, in CSS px
+(function(){
+  const st=document.createElement('style'); st.textContent=`
+@media print{
+  .bottom,.tots,.totwrap,.pmt,.notesbox,#pkgBlock,#kitchenSend,#kitchenGuests,.ihead,.grid2{break-inside:avoid;page-break-inside:avoid}
+  tr{break-inside:avoid;page-break-inside:avoid}
+  .sectionband,.pmthead,thead{break-after:avoid;page-break-after:avoid}
+  .paper{zoom:var(--btzoom,1)}
+  .grid2 .fld input,.grid2 .fld select{max-width:none!important;flex:1 1 auto;width:0;min-width:0}
+}
+body.bt-sim .paper{width:var(--btw,${BT_PAGE_W}px)!important;max-width:none!important;margin:0!important}
+body.bt-sim .wrap{max-width:none!important;padding:0!important}
+body.bt-sim td select,body.bt-sim td input{padding-top:0!important;padding-bottom:0!important;height:auto!important;line-height:1.3!important;vertical-align:middle}
+`; document.head.appendChild(st);
+})();
+/* copy every @media print rule into a switchable sheet, so the page can be measured (or captured) exactly as it prints */
+let btSimSheet=null;
+function btSim(on){
+  if(!btSimSheet){
+    let css='';
+    const walk=rules=>{ for(const r of rules){ if(r.media&&/print/.test(r.media.mediaText)&&!/screen/.test(r.media.mediaText)){ for(const x of r.cssRules) css+=x.cssText+'\n'; } } };
+    for(const sh of document.styleSheets){ try{ walk(sh.cssRules); }catch(e){} }
+    btSimSheet=document.createElement('style'); btSimSheet.id='bt-printsim'; btSimSheet.textContent=css; btSimSheet.disabled=true; document.head.appendChild(btSimSheet);
+  }
+  btSimSheet.disabled=!on; document.body.classList.toggle('bt-sim',on);
+}
+/* how much to shrink so it fits on one page (only when it's a little over; long orders still flow onto page 2) */
+function btFitScale(){
+  const p=$('paper')||document.querySelector('.paper'); if(!p) return 1;
+  btSim(true); p.style.zoom='';
+  const h=p.scrollHeight; let s=1;
+  if(h>BT_PAGE_H && h<BT_PAGE_H*1.35){
+    s=BT_PAGE_H/h;
+    for(let i=0;i<4;i++){ p.style.zoom=s; const h2=p.getBoundingClientRect().height; if(h2<=BT_PAGE_H-4) break; s*=(BT_PAGE_H-4)/h2; }
+    s=Math.max(0.74,Math.floor(s*0.97*1000)/1000);   // small safety margin: printers differ a little
+  }
+  p.style.zoom=''; btSim(false);
+  return s;
+}
+window.addEventListener('beforeprint',()=>{ document.documentElement.style.setProperty('--btzoom',btFitScale()); });
+window.addEventListener('afterprint',()=>{ document.documentElement.style.removeProperty('--btzoom'); });
+
+/* ---------- ⬇ Save PDF (downloads the file directly, no print dialog) ---------- */
+let btPdfLib=null;
+function btLoadJs(src){ return new Promise((res,rej)=>{ const s=document.createElement('script'); s.src=src; s.onload=res; s.onerror=()=>rej(new Error(src)); document.head.appendChild(s); }); }
+function btLoadPdfLib(){
+  if(window.html2canvas&&window.jspdf) return Promise.resolve();
+  if(!btPdfLib) btPdfLib=Promise.all([
+    window.html2canvas?1:btLoadJs('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js'),
+    window.jspdf?1:btLoadJs('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js')]).catch(e=>{btPdfLib=null;throw e;});
+  return btPdfLib;
+}
+async function savePDF(){
+  stripBlank(); const miss=btMissing();
+  if(miss.length){ alert('Before saving the PDF, please fill in:\n• '+miss.join('\n• ')); return; }
+  const kitchen=document.body.classList.contains('kitchen');
+  flash('Making the PDF…');
+  try{ await btLoadPdfLib(); }catch(e){ alert('Could not load the PDF maker. Check the internet, or use 🖨 Print and choose "Save as PDF".'); return; }
+  const p=$('paper')||document.querySelector('.paper');
+  const s=btFitScale(), W=Math.round(BT_PAGE_W/s);
+  btSim(true); document.documentElement.style.setProperty('--btw',W+'px');
+  document.querySelectorAll('textarea').forEach(t=>{ t.style.height='auto'; t.style.height=t.scrollHeight+'px'; });
+  const ph=[...p.querySelectorAll('[placeholder]')].map(e=>[e,e.getAttribute('placeholder')]); ph.forEach(([e])=>e.setAttribute('placeholder',''));
+  const sx=window.scrollX, sy=window.scrollY; window.scrollTo(0,0);
+  /* dropdowns don't draw cleanly in the PDF: show their chosen text instead while capturing */
+  const sw=[...p.querySelectorAll('select')].filter(e=>e.offsetParent!==null).map(e=>{ const sp=document.createElement('span'); sp.className='bt-selv';
+    const cs=getComputedStyle(e); sp.style.cssText='display:inline-block;font:'+cs.font+';color:'+cs.color+';padding:0 2px;';
+    const o=e.options[e.selectedIndex]; sp.textContent=o&&e.value!==''?o.textContent:(o&&/—/.test(o.textContent)&&e.closest('td')?'—':'');
+    e.style.display='none'; e.parentNode.insertBefore(sp,e); return [e,sp]; });
+  const no=$('invNo').value, nm=$('cName').value.trim();
+  const name=(kitchen?'Kitchen Order':($('docType').value||'Invoice'))+(no?' '+no:'')+(nm?' - '+nm.replace(/[\\/:*?"<>|]+/g,''):'')+'.pdf';
+  try{
+    const top=p.getBoundingClientRect().top;
+    /* safe places to start a new page: between rows and between blocks, never inside one */
+        const cuts=[...new Set([...p.querySelectorAll('tr,#itemsTbl,.bottom,.notesbox,#pkgBlock,#kitchenSend,.foot,.sectionband,.grid2,.ihead,.pmthead,.pkgbar,#kitchenGuests')].filter(e=>e.offsetParent!==null)
+      .flatMap(e=>{const r=e.getBoundingClientRect(); return [r.top-top, r.bottom-top];}))].map(Math.round).sort((x,y)=>x-y);
+    const blocks=[...p.querySelectorAll('.bottom,#pkgBlock,#kitchenSend,.notesbox,.ihead,.grid2,#kitchenGuests')].filter(e=>e.offsetParent!==null).map(e=>{const r=e.getBoundingClientRect();return [r.top-top+1,r.bottom-top-1];});
+    const safe=cuts.filter(c=>!blocks.some(([a,b])=>c>a&&c<b));
+    const H=Math.ceil(p.scrollHeight), scale=2;
+    const cv=await html2canvas(p,{scale,useCORS:true,backgroundColor:'#ffffff',logging:false,scrollX:0,scrollY:0,windowWidth:Math.max(document.documentElement.clientWidth,W+40)});
+    const pageH=W*(10.3/7.8);   // one page of content, in CSS px at this width
+    const {jsPDF}=window.jspdf; const pdf=new jsPDF({unit:'in',format:'letter',orientation:'portrait'});
+    let y=0, first=true;
+    while(y<H-2){
+      let end=Math.min(H,y+pageH);
+      if(end<H){ const ok=safe.filter(c=>c>y+40&&c<=end); if(ok.length) end=ok[ok.length-1]; }
+      const sl=document.createElement('canvas'); sl.width=cv.width; sl.height=Math.ceil((end-y)*scale);
+      const cx=sl.getContext('2d'); cx.fillStyle='#fff'; cx.fillRect(0,0,sl.width,sl.height); cx.drawImage(cv,0,Math.floor(y*scale),cv.width,sl.height,0,0,sl.width,sl.height);
+      if(!first) pdf.addPage(); first=false;
+      pdf.addImage(sl.toDataURL('image/jpeg',0.95),'JPEG',0.35,0.35,7.8,7.8*sl.height/sl.width);
+      y=end;
+    }
+    pdf.save(name);
+    flash('PDF saved: '+name);
+  }catch(e){ console.error(e); alert('Could not make the PDF. Use 🖨 Print and choose "Save as PDF".'); }
+  finally{ sw.forEach(([e,sp])=>{ sp.remove(); e.style.display=''; }); document.documentElement.style.removeProperty('--btw'); btSim(false); ph.forEach(([e,v])=>e.setAttribute('placeholder',v)); document.querySelectorAll('textarea').forEach(t=>grow(t)); window.scrollTo(sx,sy); }
+}
+(function(){
+  const pb=document.querySelector('button[onclick="printDoc()"]'); if(!pb||$('pdfBtn')) return;
+  pb.textContent='🖨 Print';
+  const b=document.createElement('button'); b.id='pdfBtn'; b.textContent='⬇ Save PDF'; b.onclick=savePDF;
+  pb.parentNode.insertBefore(b,pb.nextSibling);
+})();
+
+/* ---------- Word: logo at a sensible size (Word ignores CSS height on pictures) ---------- */
+const _btWordPr=window.wordHTML;
+if(_btWordPr) window.wordHTML=function(){
+  const h=_btWordPr.apply(this,arguments);
+  return h.replace(/<img src="([^"]*)" style="height:60px">/,'<img src="$1" width="110" height="48" style="width:1.15in;height:.5in">');
+};
+/* leaving the kitchen view by the Catering / Party Trays tab: put the time label back */
+const _btSetModePr=window.setMode;
+window.setMode=function(m){ const r=_btSetModePr.apply(this,arguments); try{ btKitchenLine(); }catch(e){} return r; };
+</script>
 </body>
 </html>
