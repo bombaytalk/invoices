@@ -2270,6 +2270,9 @@ body[data-mode="catering"] #addPkgBtn{display:none}
 .pkgpick .pkgopt small{display:block;color:#5E5A50;font-size:13px;margin-top:2px;line-height:1.4}
 @media print{ .pkgbtns{display:none} }
 `; document.head.appendChild(st);
+  // MK: package choice sits at the bottom, under ＋ Add item / ＋ Add option
+  const tip=document.querySelector('.note.traysonly.tip')||document.querySelector('.addbar'); if(tip&&tip.parentNode) tip.parentNode.insertBefore(bar,tip.nextSibling);
+  bar.style.marginTop='12px';
   btPkgButtons();
 })();
 function btPkgListHtml(){
@@ -2282,13 +2285,13 @@ function openPkgMenu(){
   $('savedList').innerHTML=btPkgListHtml();
   $('drawer').classList.add('open');$('backdrop').classList.add('show');
 }
-/* packages at the top of the tray menu, so they're there when Party Trays opens the menu */
+/* packages at the bottom of the tray menu (MK, Nov 5) */
 const _btRenderTrayMenuP=window.renderTrayMenu;
 window.renderTrayMenu=function(){
   _btRenderTrayMenuP.apply(this,arguments);
   const q=($('mQ')&&$('mQ').value||'').trim(); if(q) return;
   if(btPkg.pkg) return;   // a package is already chosen
-  $('savedList').insertAdjacentHTML('afterbegin',btPkgListHtml());
+  $('savedList').insertAdjacentHTML('beforeend',btPkgListHtml());   // MK: packages at the very bottom
 };
 const _btCalcPU=window.calc;
 window.calc=function(){ _btCalcPU.apply(this,arguments); btPkgButtons(); };
