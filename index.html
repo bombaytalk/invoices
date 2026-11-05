@@ -2226,5 +2226,72 @@ window.addFromMenu=function(si,ii,size,btn){
 };
 calc();
 </script>
+<script>
+/* ---------- Packages easy to find: big buttons on the invoice, a "＋ Package" button, and packages at the top of the tray menu ---------- */
+function btPkgRate(name){ const p=PACKAGES[name]; return p?('$'+p.p50+' / person'):''; }
+function btPkgPickPackage(name){
+  const sel=$('pkgSel'); if(!sel) return;
+  if(document.body.dataset.mode!=='trays') setMode('trays');
+  sel.value=name; btPkgChanged(); closeDrawer();
+  if(name){
+    if(!(parseFloat($('pkgGuests').value)>0)){ flash('Enter the number of guests'); const g=$('eGuests'); if(g){ g.focus(); g.scrollIntoView({block:'center',behavior:'smooth'}); } }
+    else { const i=btPkg.slots.findIndex(s=>!s.dish); if(i>=0) setTimeout(()=>btPkgPick(i),250); }
+  }
+  btPkgButtons();
+}
+/* segmented buttons in the package bar (the dropdown stays underneath for saving/loading) */
+function btPkgButtons(){
+  const box=$('pkgBtns'); if(!box) return; const cur=$('pkgSel').value;
+  box.innerHTML=[['', 'No package']].concat(Object.keys(PACKAGES).map(k=>[k,k.replace('Catering ','')+' · '+btPkgRate(k)]))
+    .map(([v,l])=>`<button type="button" class="pkgb${v===cur?' on':''}" onclick="btPkgPickPackage('${v}')">${esc(l)}</button>`).join('');
+}
+(function(){
+  const bar=document.querySelector('.pkgbar'), sel=$('pkgSel'); if(!bar||!sel||$('pkgBtns')) return;
+  const box=document.createElement('div'); box.id='pkgBtns'; box.className='pkgbtns';
+  sel.parentNode.insertBefore(box,sel); sel.style.display='none';
+  const lb=bar.querySelector('b'); if(lb) lb.textContent='Catering package:';
+  // "＋ Package" next to "＋ Add item" / "＋ Add option" (Party Trays)
+  const ab=document.querySelector('.addbar');
+  if(ab&&!$('addPkgBtn')){ const b=document.createElement('button'); b.id='addPkgBtn'; b.type='button'; b.className='addrow traysonly'; b.textContent='＋ Package (per person)'; b.onclick=()=>openPkgMenu(); ab.appendChild(b); }
+  const st=document.createElement('style'); st.textContent=`
+.pkgbtns{display:flex;flex-wrap:wrap;gap:8px}
+.pkgb{border:1.5px solid #1F3D2B;background:#fff;color:#1F3D2B;border-radius:999px;padding:8px 14px;font:inherit;font-size:14.5px;font-weight:500;cursor:pointer}
+.pkgb.on{background:#1F3D2B;color:#fff}
+.pkgbar{gap:10px 14px!important;font-size:14.5px!important}
+.pkgbar label input{font-size:15px;padding:6px 8px;border:1px solid var(--line);border-radius:6px}
+#addPkgBtn{flex:1 1 200px}
+body[data-mode="catering"] #addPkgBtn{display:none}
+.pkgpick{border:1.5px solid #A8843A;border-radius:10px;padding:12px;margin:0 0 12px;background:#fff}
+.pkgpick h4{margin:0 0 4px;font-size:15px;color:#1F3D2B}
+.pkgpick p{margin:0 0 8px;font-size:13.5px;color:#5E5A50}
+.pkgpick .pkgopt{display:block;width:100%;text-align:left;border:1px solid #D9CFB8;border-radius:8px;background:#fff;padding:10px 12px;margin:6px 0 0;cursor:pointer;font:inherit}
+.pkgpick .pkgopt b{color:#1F3D2B;font-size:15.5px}
+.pkgpick .pkgopt span{float:right;color:#A8843A;font-weight:600}
+.pkgpick .pkgopt small{display:block;color:#5E5A50;font-size:13px;margin-top:2px;line-height:1.4}
+@media print{ .pkgbtns{display:none} }
+`; document.head.appendChild(st);
+  btPkgButtons();
+})();
+function btPkgListHtml(){
+  return `<div class="pkgpick"><h4>Catering packages — priced per person</h4><p>Pick a package, then choose a dish for each part of the meal. 50+ guests rate shown (100+ is less; under 50 adds $3).</p>`+
+    Object.keys(PACKAGES).map(k=>`<button type="button" class="pkgopt" onclick="btPkgPickPackage('${k}')"><b>${esc(k.replace('Catering ',''))}</b><span>${esc(btPkgRate(k))}</span><small>${esc(PACKAGES[k].slots.join(' · '))}</small></button>`).join('')+`</div>`;
+}
+function openPkgMenu(){
+  $('drawerTitle').textContent='Catering packages';
+  $('drawerTools').innerHTML='';
+  $('savedList').innerHTML=btPkgListHtml();
+  $('drawer').classList.add('open');$('backdrop').classList.add('show');
+}
+/* packages at the top of the tray menu, so they're there when Party Trays opens the menu */
+const _btRenderTrayMenuP=window.renderTrayMenu;
+window.renderTrayMenu=function(){
+  _btRenderTrayMenuP.apply(this,arguments);
+  const q=($('mQ')&&$('mQ').value||'').trim(); if(q) return;
+  if(btPkg.pkg) return;   // a package is already chosen
+  $('savedList').insertAdjacentHTML('afterbegin',btPkgListHtml());
+};
+const _btCalcPU=window.calc;
+window.calc=function(){ _btCalcPU.apply(this,arguments); btPkgButtons(); };
+</script>
 </body>
 </html>
