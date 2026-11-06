@@ -2297,5 +2297,111 @@ const _btCalcPU=window.calc;
 window.calc=function(){ _btCalcPU.apply(this,arguments); btPkgButtons(); };
 </script>
 <!-- build: packages at the bottom, Nov 5 2026 -->
+<script>
+/* ---------- Dishes that come with bread (MK, Nov 5): extra bread lines merge into the dish on the Kitchen Order ----------
+   Invoice: "1 ST Chole Bhatura" + "10 PCS Bhatura" (charged on its own line)
+   Kitchen: "1 ST Chole Bhatura (35 pcs Bhatura)"  — the extra line is folded in */
+const BT_BREADS=[
+  {dish:/^\s*chole\s+bhatur/i, bread:'Bhatura', names:['bhatura','bhature','bhaturas','bhatoora','bhatooras','bhature'], per:{ST:25}},
+  {dish:/^\s*pav\s+bhaji/i, bread:'Pav', names:['pav','pavs','pao','paav','pavbread','bread'], per:{ST:30,MT:50,LT:90}},
+  {dish:/^\s*puri\s+batata\s+bhaji/i, bread:'Puri', names:['puri','puris','poori','pooris'], per:{}}
+];
+function btBreadNorm(s){ return String(s||'').toLowerCase().replace(/\(.*?\)/g,' ').replace(/\b(extra|additional|addl|add'l|more|pcs|pc|pieces|piece|only|plain)\b/g,' ').replace(/[^a-z]/g,''); }
+function btBreadDef(desc){ return BT_BREADS.find(b=>b.dish.test(desc||'')); }
+function btIsTray(sz){ return ['ST','MT','LT','SDT','LDT'].indexOf(sz)>=0; }
+/* work out, for every row, the dish→bread links */
+function btBreadPlan(){
+  const trs=[...$('itemsBody').querySelectorAll('tr')], plan={parents:[],extra:new Set()};
+  const byBread={};
+  trs.forEach((tr,i)=>{
+    if(tr.dataset.opt==='1') return;
+    const d=btBreadDef(tr.querySelector('textarea').value); if(!d) return;
+    const q=parseFloat(tr.querySelector('.qin').value)||0, sz=(tr.querySelector('.sizesel')||{}).value||'';
+    const auto=(d.per[sz]!=null&&q)?d.per[sz]*q:'';
+    const inp=tr.querySelector('.binin'); const man=tr.dataset.binman==='1'&&inp&&inp.value!=='';
+    const incl=man?parseFloat(inp.value):(auto===''?null:auto);
+    const p={i,tr,d,incl,extra:0}; plan.parents.push(p); if(!byBread[d.bread]) byBread[d.bread]=p;
+  });
+  trs.forEach((tr,i)=>{
+    if(tr.dataset.opt==='1') return; const sz=(tr.querySelector('.sizesel')||{}).value||''; if(btIsTray(sz)) return;
+    const n=btBreadNorm(tr.querySelector('textarea').value); if(!n) return;
+    const d=BT_BREADS.find(b=>b.names.indexOf(n)>=0); if(!d||!byBread[d.bread]) return;
+    byBread[d.bread].extra+=parseFloat(tr.querySelector('.qin').value)||0; plan.extra.add(i);
+  });
+  return plan;
+}
+function btBreadDish(desc,t){ const d=String(desc||'').trim(); return t?d.replace(/\s*\(breads?[^)]*\)/i,'')+' ('+t+')':d; }
+function btBreadTxt(p){ const tot=p.incl==null?null:p.incl+p.extra; return tot==null?'':(tot+' pcs '+p.d.bread); }
+/* keep the "Comes with __ Bhatura" box on each such dish and the kitchen text up to date */
+function btBreadSync(){
+  const body=$('itemsBody'); if(!body) return;
+  body.querySelectorAll('tr').forEach(tr=>{ tr.classList.remove('kmerged'); });
+  const plan=btBreadPlan(), seen=new Set(plan.parents.map(p=>p.tr));
+  body.querySelectorAll('tr').forEach(tr=>{ if(!seen.has(tr)){ const x=tr.querySelector('.bincl'); if(x) x.remove(); const k=tr.querySelector('.kdesc'); if(k) k.remove(); tr.classList.remove('hasbread'); delete tr.dataset.binman; } });
+  plan.parents.forEach(p=>{
+    const td=p.tr.querySelector('textarea').parentNode; let box=td.querySelector('.bincl');
+    if(!box||box.dataset.b!==p.d.bread){ if(box) box.remove(); box=document.createElement('div'); box.className='bincl'; box.dataset.b=p.d.bread;
+      box.innerHTML='Comes with <input class="binin" type="number" min="0" step="1" oninput="btBreadEdited(this)"><span class="bint"></span> '+esc(p.d.bread)+' <span class="binx"></span>';
+      td.appendChild(box); }
+    const inp=box.querySelector('.binin');
+    if(p.tr.dataset.binman!=='1') inp.value=p.incl==null?'':p.incl;
+    inp.classList.toggle('missing',p.incl==null);
+    inp.placeholder='pcs';
+    box.querySelector('.bint').textContent=p.incl==null?'':p.incl;
+    box.querySelector('.binx').textContent=p.extra?('→ kitchen order: '+(p.incl==null?'?':p.incl+p.extra)+' pcs ('+(p.incl==null?'?':p.incl)+' + '+p.extra+' extra)'):'';
+    let k=td.querySelector('.kdesc'); if(!k){ k=document.createElement('div'); k.className='kdesc'; td.insertBefore(k,td.firstChild); }
+    const t=btBreadTxt(p); k.textContent=btBreadDish(p.tr.querySelector('textarea').value,t);
+    p.tr.classList.add('hasbread');
+  });
+  plan.extra.forEach(i=>{ const tr=body.querySelectorAll('tr')[i]; if(tr) tr.classList.add('kmerged'); });
+}
+function btBreadEdited(inp){ const tr=inp.closest('tr'); tr.dataset.binman=inp.value===''?'':'1'; calc(); }
+(function(){
+  const st=document.createElement('style'); st.textContent=`
+.bincl{font-size:13px;color:#5E5A50;margin:3px 0 1px;display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+.bincl .binin{width:62px;font:inherit;font-size:13.5px;padding:2px 5px;border:1px solid var(--line);border-radius:5px}
+.bincl .binin.missing{border-color:#B3261E;background:#fff}
+.bincl .bint{display:none}
+.bincl .binx{color:#1F3D2B}
+.kdesc{display:none}
+@media print{ .bincl .binin{display:none} .bincl .bint{display:inline} .bincl .binx{display:none} }
+body.bt-sim .bincl .binin{display:none} body.bt-sim .bincl .bint{display:inline} body.bt-sim .bincl .binx{display:none}
+body.kitchen #itemsTbl tr.kmerged{display:none!important}
+body.kitchen #itemsTbl tr.hasbread textarea.desc{display:none!important}
+body.kitchen #itemsTbl tr.hasbread .bincl{display:none!important}
+body.kitchen #itemsTbl tr.hasbread .kdesc{display:block;font-size:15px;font-weight:600!important;padding:4px 2px;white-space:pre-wrap}
+`; document.head.appendChild(st);
+})();
+/* keep it in sync */
+const _btCalcB=window.calc;
+window.calc=function(){ _btCalcB.apply(this,arguments); try{ btBreadSync(); }catch(e){} };
+/* save / load a typed bread count */
+const _btGatherB=window.gather;
+window.gather=function(){ const d=_btGatherB.apply(this,arguments); const trs=$('itemsBody').querySelectorAll('tr');
+  (d.items||[]).forEach((it,i)=>{ const tr=trs[i]; const inp=tr&&tr.querySelector('.binin'); if(tr&&tr.dataset.binman==='1'&&inp&&inp.value!=='') it.breadPcs=inp.value; }); return d; };
+const _btLoadB=window.load;
+window.load=function(doc){ const r=_btLoadB.apply(this,arguments); const trs=$('itemsBody').querySelectorAll('tr');
+  ((doc&&doc.items)||[]).forEach((it,i)=>{ if(it&&it.breadPcs!=null&&trs[i]) trs[i].dataset.binman='1'; });
+  btBreadSync(); ((doc&&doc.items)||[]).forEach((it,i)=>{ const inp=trs[i]&&trs[i].querySelector('.binin'); if(it&&it.breadPcs!=null&&inp) inp.value=it.breadPcs; });
+  calc(); return r; };
+/* the count must be there before Save / Print (e.g. Chole Bhatura Medium until MK gives the standard number) */
+const _btMissB=window.btMissing;
+window.btMissing=function(){ const m=_btMissB.apply(this,arguments);
+  btBreadPlan().parents.forEach(p=>{ if(p.incl==null) m.push(p.d.bread+' pieces for '+p.tr.querySelector('textarea').value.trim()+' '+((p.tr.querySelector('.sizesel')||{}).value||'')); }); return m; };
+/* Word / kitchen .docx: same merge */
+function btBreadRows(){
+  if(!document.body.classList.contains('kitchen')) return ()=>{};
+  const orig=window.computeTotals, plan=btBreadPlan();
+  window.computeTotals=function(){ const t=orig.apply(this,arguments);
+    t.rows=t.rows.map((r,i)=>{ const p=plan.parents.find(x=>x.i===i); const tx=p&&btBreadTxt(p); return tx?Object.assign({},r,{desc:btBreadDish(r.desc,tx)}):r; })
+      .filter((r,i)=>!plan.extra.has(i)); return t; };
+  return ()=>{ window.computeTotals=orig; };
+}
+const _btDocxBlobB=window.btDocxBlob;
+if(_btDocxBlobB) window.btDocxBlob=async function(){ const u=btBreadRows(); try{ return await _btDocxBlobB.apply(this,arguments); } finally{ u(); } };
+const _btWordHTMLB=window.wordHTML;
+if(_btWordHTMLB) window.wordHTML=function(){ const u=btBreadRows(); try{ return _btWordHTMLB.apply(this,arguments); } finally{ u(); } };
+calc();
+</script>
 </body>
 </html>
