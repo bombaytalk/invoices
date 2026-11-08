@@ -2296,7 +2296,7 @@ window.renderTrayMenu=function(){
 const _btCalcPU=window.calc;
 window.calc=function(){ _btCalcPU.apply(this,arguments); btPkgButtons(); };
 </script>
-<!-- build: packages at the bottom, Nov 5 2026 -->
+<!-- build: no duplicate invoices, Nov 8 2026 -->
 <script>
 /* ---------- Dishes that come with bread (MK, Nov 5): extra bread lines merge into the dish on the Kitchen Order ----------
    Invoice: "1 ST Chole Bhatura" + "10 PCS Bhatura" (charged on its own line)
@@ -2402,6 +2402,98 @@ if(_btDocxBlobB) window.btDocxBlob=async function(){ const u=btBreadRows(); try{
 const _btWordHTMLB=window.wordHTML;
 if(_btWordHTMLB) window.wordHTML=function(){ const u=btBreadRows(); try{ return _btWordHTMLB.apply(this,arguments); } finally{ u(); } };
 calc();
+</script>
+<script>
+/* ---------- No duplicate invoices (MK, Nov 8) ----------
+   1. Toolbar shows clearly what Save will do: "Editing BT-2026-0003 · Save updates it" or "New invoice · Save makes a new number".
+   2. Saving a NEW invoice for a customer who already has an open invoice (same phone, or same name) asks:
+      update that invoice, or really make a second one.
+   3. Website orders → "Make invoice" for a customer who already has an invoice offers to open and link that one instead. */
+(function(){
+  const st=document.createElement('style'); st.textContent=`
+.btmode{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:700;padding:6px 10px;border-radius:6px;border:1.5px solid #E2C27A;color:#E2C27A;white-space:nowrap}
+.btmode.edit{border-color:#9FD3A8;color:#9FD3A8}
+@media print{.btmode{display:none!important}}`; document.head.appendChild(st);
+  const tb=document.querySelector('.toolbar'); if(!tb) return;
+  const chip=document.createElement('span'); chip.className='btmode hideprint'; chip.id='btMode';
+  const save=[...tb.querySelectorAll('button')].find(b=>/saveDoc/.test(b.getAttribute('onclick')||''));
+  if(save) save.after(chip); else tb.appendChild(chip);
+})();
+function btModeShow(){
+  const c=$('btMode'); if(!c) return; const no=($('invNo')||{}).value||'';
+  c.classList.toggle('edit',!!no);
+  c.textContent=no?('✎ Editing '+no+' · Save updates it'):'＋ New invoice · Save makes a new number';
+}
+const _dupCalc=window.calc;
+window.calc=function(){ const r=_dupCalc.apply(this,arguments); try{btModeShow();}catch(e){} return r; };
+
+function btDigits(s){ const d=String(s||'').replace(/\D/g,''); return d.length>=10?d.slice(-10):''; }
+function btFirst(s){ return String(s||'').toLowerCase().replace(/[^a-z ]/g,' ').trim().split(/\s+/)[0]||''; }
+/* look for this customer's other invoices that are not void */
+async function btFindSame(name,phone,skipNo){
+  const fn=btFirst(name), ph=btDigits(phone); if(!fn&&!ph) return [];
+  const rows=(await btApi('list')).rows||[];
+  const cand=rows.filter(r=>r['Status']!=='Void'&&r['Invoice #']!==skipNo&&btFirst(r['Client'])===fn).slice(0,6);
+  const out=[];
+  for(const r of cand){
+    let same=false, d=null;
+    try{ d=(await btApi('get',{no:r['Invoice #']})).doc; }catch(e){}
+    const ph2=btDigits(d&&d.fields&&d.fields.cPhone);
+    if(ph&&ph2) same=(ph===ph2);
+    else same=String(r['Client']||'').trim().toLowerCase()===String(name||'').trim().toLowerCase()||!ph||!ph2;
+    if(same) out.push({row:r,doc:d});
+  }
+  return out;
+}
+function btDescr(m){ const r=m.row; return r['Invoice #']+' · '+(r['Client']||'')+(r['Service date']?' · for '+fmtD(r['Service date']):'')+' · '+money(+r['Total']||0)+' · '+r['Status']; }
+
+/* 2. Save guard */
+const _dupSave=window.saveDoc;
+window.saveDoc=async function(){
+  let missNow=[]; try{ stripBlank(); missNow=btMissing(); }catch(e){}
+  if(!$('invNo').value&&!missNow.length){
+    let same=[];
+    try{ flash('Checking for this customer’s invoices…'); same=await btFindSame($('cName').value,$('cPhone').value,''); }catch(e){ same=[]; }
+    if(same.length){
+      const m=same[0];
+      const ok=confirm($('cName').value.trim()+' already has an invoice:\n\n   '+btDescr(m)+(same.length>1?'\n   (+ '+(same.length-1)+' more)':'')+
+        '\n\nOK  =  UPDATE '+m.row['Invoice #']+' with what is on the screen now (no new invoice)\nCancel  =  make a separate NEW invoice');
+      if(ok){
+        const old=m.doc||{fields:{}};
+        $('invNo').value=m.row['Invoice #']; $('invDate').value=(old.fields&&old.fields.invDate)||'';
+        if(!$('webRef').value&&old.fields&&old.fields.webRef) $('webRef').value=old.fields.webRef;
+        /* keep payments already recorded on the old invoice */
+        const hasP=[...$('pmtBody').querySelectorAll('tr')].some(tr=>{const i=tr.querySelectorAll('input');return i[0]&&i[0].value||i[1]&&i[1].value;});
+        if(!hasP&&old.pmts&&old.pmts.length&&typeof _btAddPmt0==='function') old.pmts.forEach(p=>_btAddPmt0(p));
+        curId=m.row['Invoice #']; calc();
+      }
+    }
+  }
+  return _dupSave.apply(this,arguments);
+};
+
+/* 3. Website orders: remember the list so we know the customer's name */
+let btOrders=[];
+const _dupApi=window.btApi;
+window.btApi=async function(action,data){ const r=await _dupApi(action,data); if(action==='inquiries'&&r&&r.rows) btOrders=r.rows; return r; };
+const _dupFromRef=window.fromRef;
+window.fromRef=async function(ref){
+  const o=btOrders.find(x=>x.ref===ref);
+  if(o&&!o.invoice&&o.name){
+    let same=[]; try{ same=await btFindSame(o.name,o.phone||'',''); }catch(e){}
+    if(same.length){
+      const m=same[0];
+      if(confirm('This customer may already have an invoice:\n\n   '+btDescr(m)+'\n\nOK  =  open '+m.row['Invoice #']+' and link this website order to it (then add the changes and Save)\nCancel  =  make a separate new invoice from the website order')){
+        try{ await openNo(m.row['Invoice #']); $('webRef').value=ref; calc(); flash('Opened '+m.row['Invoice #']+' · make the changes and Save'); }catch(e){}
+        return;
+      }
+    }
+  }
+  return _dupFromRef.apply(this,arguments);
+};
+/* Duplicate / New / Import → start as a new invoice; chip updates via calc */
+btModeShow();
+
 </script>
 </body>
 </html>
