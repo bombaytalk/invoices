@@ -2296,7 +2296,7 @@ window.renderTrayMenu=function(){
 const _btCalcPU=window.calc;
 window.calc=function(){ _btCalcPU.apply(this,arguments); btPkgButtons(); };
 </script>
-<!-- build: on-site + party trays tabs, Nov 10 2026 -->
+<!-- build: safe folder save, Nov 10 2026 -->
 <script>
 /* ---------- Dishes that come with bread (MK, Nov 5): extra bread lines merge into the dish on the Kitchen Order ----------
    Invoice: "1 ST Chole Bhatura" + "10 PCS Bhatura" (charged on its own line)
@@ -2713,6 +2713,44 @@ osLists(); osRender();
   st.textContent='body[data-mode="catering"] .pkgbar,body[data-mode="catering"] #pkgBtns,body[data-mode="catering"] #pkgSlots{display:none!important}';
   document.head.appendChild(st);
 })();
+
+</script>
+<script>
+/* ---------- ☁ OneDrive folder save that never gets stuck (MK, Nov 10) ----------
+   The error "state had changed since it was read from disk" happens when OneDrive is syncing / has just changed
+   the file we are overwriting. Now: retry, then replace the file, then save under a new name, and as a last resort
+   download the files — no error box. The invoice itself is always in the office register (💾 Save). */
+const btSleep=ms=>new Promise(r=>setTimeout(r,ms));
+async function btWriteOnce(dir,name,blob){ const fh=await dir.getFileHandle(name,{create:true}); const w=await fh.createWritable(); await w.write(blob); await w.close(); }
+async function btWriteSafe(getDir,name,blob){
+  let last;
+  for(let i=0;i<3;i++){ try{ await btWriteOnce(await getDir(),name,blob); return name; }catch(e){ last=e; await btSleep(700*(i+1)); } }
+  try{ const d=await getDir(); try{ await d.removeEntry(name); }catch(x){} await btWriteOnce(d,name,blob); return name; }catch(e){ last=e; }
+  const alt=name.replace(/(\.[a-z]+)$/i,' ('+new Date().toTimeString().slice(0,8).replace(/:/g,'')+')$1');
+  try{ await btWriteOnce(await getDir(),alt,blob); return alt; }catch(e){ last=e; }
+  throw last;
+}
+window.saveToOneDrive=async function(forcePick){
+  if(!window.showDirectoryPicker){ alert("This browser can't save straight to a folder. Use Word / Export instead, or open the app in Chrome or Edge on desktop."); return; }
+  const g=gather().fields;
+  if(!g.cName||!g.cName.trim()){ alert('Enter a client name first.'); return; }
+  const ev=g.eDate||g.tDate||''; const d=parseDate(ev); const month=d?d.slice(0,7):'Undated';
+  const base=fnameBase(), doc=wordBlob(), js=jsonBlob();
+  let root;
+  try{ root=await getRootDir(!!forcePick); }catch(e){ if(e&&e.name==='AbortError') return; root=null; }
+  /* fresh folder handles on every try, so a stale handle can't block the save */
+  const getDir=async()=>{ const b=await root.getDirectoryHandle('Bombaytalk Invoices',{create:true}); return b.getDirectoryHandle(month,{create:true}); };
+  try{
+    if(!root) throw new Error('no folder');
+    const n1=await btWriteSafe(getDir,base+'.doc',doc);
+    await btWriteSafe(getDir,base+'.json',js);
+    flash('Saved to OneDrive ▸ Bombaytalk Invoices/'+month+(n1!==base+'.doc'?' (as a new copy)':''));
+  }catch(e){
+    if(e&&e.name==='AbortError') return;
+    dl(doc,base+'.doc'); dl(js,base+'.json');
+    flash('OneDrive folder was busy, so the files were downloaded instead. The invoice is safe in the office register.');
+  }
+};
 
 </script>
 </body>
