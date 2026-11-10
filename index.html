@@ -2296,7 +2296,7 @@ window.renderTrayMenu=function(){
 const _btCalcPU=window.calc;
 window.calc=function(){ _btCalcPU.apply(this,arguments); btPkgButtons(); };
 </script>
-<!-- build: on-site menus per person, Nov 8 2026 -->
+<!-- build: on-site menus per person, Nov 10 2026 -->
 <script>
 /* ---------- Dishes that come with bread (MK, Nov 5): extra bread lines merge into the dish on the Kitchen Order ----------
    Invoice: "1 ST Chole Bhatura" + "10 PCS Bhatura" (charged on its own line)
@@ -2502,7 +2502,8 @@ btModeShow();
    The invoice gets one line per menu: "<guests> × <rate>" with the full menu in the description.
    Extra live stations beyond the package = their own line, guests × $ per person.
    Staff, station chef, rentals, setup → ＋ Add option.  Service charge % = the Service charge box. */
-const OS_STATIONS=['South Indian Griddle (Dosa)','Indo-Chinese Live Wok','Indo-Mexican Taco Bar','Italian Pasta & Flatbread','Bombay Sliders & Rolls','Modern Chaat','Paneer & Tandoor (outdoor tandoor)','Pav Bhaji & Street Food','Live Jalebi with Rabri','Contemporary Desserts','Live Dessert Specials','Mithai Table','Grazing Table','Welcome Drinks & Sharbat','Breakfast & Brunch Live'];
+const OS_STATIONS=['South Indian Griddle (Dosa)','Indo-Chinese Live Wok','Indo-Mexican Taco Bar','Italian Pasta & Flatbread','Bombay Sliders & Rolls','Modern Chaat','Paneer & Tandoor (outdoor tandoor)','Pav Bhaji & Street Food','Live Jalebi with Rabri','Contemporary Desserts','Live Dessert Specials','Mithai Table','Grazing Table','Dessert Display (tiered stands)','Fruit & Cheese Display','Welcome Drinks & Sharbat','Breakfast & Brunch Live'];
+const OS_STY=['Buffet','Butler-passed','Stand display'];
 const OS_DRINKS=['Mango Lassi','Sweet Lassi','Rose Sharbat','Kokum Sharbat','Jaljeera','Fresh Lime Soda','Mocktail','Masala Chai','Filter Coffee'];
 const OS_C={drink:'Welcome drink',app:'Appetizer',station:'Live station',rice:'Rice',veg:'Vegetable entrée',dal:'Dal / Kadhi',bread:'Bread',dessert:'Dessert'};
 const OS_PL={drink:'Welcome drink',app:'Appetizers',station:'Live stations',rice:'Rice',veg:'Entrées',dal:'Dal / Kadhi',bread:'Breads',dessert:'Desserts'};
@@ -2574,6 +2575,7 @@ function osLists(){
   const h=['drink','app','rice','veg','dal','bread','dessert'].map(k=>`<datalist id="osdl_${k}">${osDishList(k).map(n=>`<option value="${esc(n)}">`).join('')}</datalist>`).join('');
   $('osLists').innerHTML=h;
 }
+function osStyleOf(m,i){ const st=(m.style||{}); if(st[i]) return st[i]; const ap=osSlots(m).find(x=>x[0]==='app'); return (ap&&/butler/i.test(ap[2]||'')&&i<2)?'Butler-passed':'Buffet'; }
 function osSlots(m){ const d=(OS_DEF[m.ev]||{})[m.tier]; return d?d.s:[]; }
 function osRender(){
   const b=$('osBox'); if(!b) return;
@@ -2594,16 +2596,17 @@ function osRender(){
         h+=`<b>${esc(OS_PL[k])}${n>1?' ('+n+')':''}${hint?'<br><span class="mut">'+esc(hint)+'</span>':''}</b><div class="picks">`;
         for(let i=0;i<n;i++){
           if(k==='station') h+=`<select onchange="osPick(${mi},'${k}',${i},this.value)"><option value="">— choose station —</option>${OS_STATIONS.map(s=>`<option ${v[i]===s?'selected':''}>${esc(s)}</option>`).join('')}</select>`;
+          else if(k==='app') h+=`<span style="display:inline-flex;gap:4px;flex:1 1 300px"><input style="flex:1;min-width:150px" list="osdl_app" placeholder="Appetizer ${n>1?i+1:''}" value="${esc(v[i]||'')}" oninput="osPick(${mi},'app',${i},this.value)"><select title="How it is served" onchange="osSty(${mi},${i},this.value)">${OS_STY.map(o=>`<option ${osStyleOf(m,i)===o?'selected':''}>${o}</option>`).join('')}</select></span>`;
           else h+=`<input list="osdl_${k}" placeholder="${esc(OS_C[k])} ${n>1?i+1:''}" value="${esc(v[i]||'')}" oninput="osPick(${mi},'${k}',${i},this.value)">`;
         }
         h+='</div>';
       });
       const fx=((OS_DEF[m.ev]||{})[m.tier]||{}).fixed; if(fx) h+=`<b>Included</b><div class="mut">${esc(fx)}</div>`;
-      h+=`<b>Extra live stations<br><span class="mut">guests × $ per person</span></b><div>`;
+      h+=`<b>Extra stations &amp; displays<br><span class="mut">grazing table, mithai, dessert display · guests × $ per person</span></b><div>`;
       m.extras.forEach((x,xi)=>{ h+=`<div class="row" style="margin:2px 0"><select onchange="osX(${mi},${xi},'st',this.value)"><option value="">— choose station —</option>${OS_STATIONS.map(s=>`<option ${x.st===s?'selected':''}>${esc(s)}</option>`).join('')}</select>
         <label>$ / person <input type="number" min="0" step="0.5" style="width:90px" class="${+x.pp?'':'need'}" value="${esc(x.pp||'')}" oninput="osX(${mi},${xi},'pp',this.value,this)"></label>
         <button class="rm" onclick="osXDel(${mi},${xi})">×</button></div>`; });
-      h+=`<button class="lnk" onclick="osXAdd(${mi})">＋ Extra live station</button></div></div>`;
+      h+=`<button class="lnk" onclick="osXAdd(${mi})">＋ Extra station or display (grazing table…)</button></div></div>`;
     }
     h+='</div>';
   });
@@ -2616,6 +2619,7 @@ function osDel(mi){ if(!confirm('Remove this event menu from the invoice?')) ret
 function osEv(mi,e){ osMenus[mi].ev=e; if(!osMenus[mi].guests) osMenus[mi].guests=$('eGuests').value||''; osRender(); osSync(); }
 function osTier(mi,t){ osMenus[mi].tier=t; osRender(); osSync(); }
 function osSet(mi,k,v,el){ osMenus[mi][k]=v; if(el) el.classList.toggle('need',!(+v)); osSync(); osTotShow(mi); }
+function osSty(mi,i,v){ const m=osMenus[mi]; (m.style=m.style||{})[i]=v; osSync(); }
 function osPick(mi,k,i,v){ const p=osMenus[mi].picks; (p[k]=p[k]||[])[i]=v; osSync(); }
 function osX(mi,xi,k,v,el){ osMenus[mi].extras[xi][k]=v; if(el) el.classList.toggle('need',!(+v)); osSync(); osTotShow(mi); }
 function osXAdd(mi){ osMenus[mi].extras.push({st:'',pp:''}); osRender(); osSync(); }
@@ -2626,10 +2630,10 @@ function osTotShow(mi){ const m=osMenus[mi], e=$('osTot'+mi); if(!e) return; con
 function osDesc(m){
   const L=[m.ev+(m.ev==='Custom'?' menu':'')+' · '+m.tier+' package · per person'];
   osSlots(m).forEach(([k,n,hint])=>{
-    const v=(m.picks[k]||[]).slice(0,n).filter(x=>x&&x.trim());
+    let v=(m.picks[k]||[]).slice(0,n).map((x,i)=>x&&x.trim()?(k==='app'?x.trim()+' ('+osStyleOf(m,i).toLowerCase()+')':x.trim()):'').filter(Boolean);
     const tbd=n-v.length;
     if(m.ev==='Custom'&&!v.length) return;
-    L.push(OS_PL[k]+': '+(v.length?v.join(', '):'')+(tbd>0&&m.ev!=='Custom'?(v.length?', ':'')+(tbd>1?tbd+' to be chosen':'to be chosen'):'')+(hint&&k==='app'?' ('+hint+')':''));
+    L.push(OS_PL[k]+': '+(v.length?v.join(', '):'')+(tbd>0&&m.ev!=='Custom'?(v.length?', ':'')+(tbd>1?tbd+' to be chosen':'to be chosen'):''));
   });
   const fx=((OS_DEF[m.ev]||{})[m.tier]||{}).fixed; if(fx) L.push(fx);
   return L.join('\n');
@@ -2640,7 +2644,7 @@ function osSync(){
   const want=[];
   osMenus.forEach(m=>{ if(!m.ev) return;
     want.push({key:m.id,main:true,m,qty:m.guests||'',desc:osDesc(m),price:m.rate||''});
-    m.extras.forEach((x,xi)=>want.push({key:m.id+'_x'+xi,m,qty:m.guests||'',desc:'Extra live station · '+(x.st||'to be chosen')+' · per person ('+m.ev+')',price:x.pp||''}));
+    m.extras.forEach((x,xi)=>want.push({key:m.id+'_x'+xi,m,qty:m.guests||'',desc:(/table|display/i.test(x.st||'')?'':'Extra live station · ')+(x.st||'Extra station · to be chosen')+' · per person ('+m.ev+')',price:x.pp||''}));
   });
   const have={}; body.querySelectorAll('tr.osrow').forEach(tr=>{ have[tr.dataset.os]=tr; });
   Object.keys(have).forEach(k=>{ if(!want.some(w=>w.key===k)) have[k].remove(); });
@@ -2685,7 +2689,7 @@ window.btMissing=function(){ const m=_osMiss.apply(this,arguments);
   if(document.body.dataset.mode!=='trays') osMenus.forEach(o=>{ if(!o.ev) return;
     if(!(+o.guests)) m.push('Guests for the '+o.ev+' menu');
     if(!(+o.rate)) m.push('Per-person rate for the '+o.ev+' menu');
-    o.extras.forEach(x=>{ if(!x.st) m.push('Extra live station name ('+o.ev+')'); if(!(+x.pp)) m.push('$ per person for '+(x.st||'the extra live station')); }); });
+    o.extras.forEach(x=>{ if(!x.st) m.push('Extra station / display name ('+o.ev+')'); if(!(+x.pp)) m.push('$ per person for '+(x.st||'the extra station')); }); });
   return m; };
 /* on-site menus belong to the Catering tab */
 const _osMode=window.setMode;
