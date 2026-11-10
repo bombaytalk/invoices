@@ -2296,7 +2296,7 @@ window.renderTrayMenu=function(){
 const _btCalcPU=window.calc;
 window.calc=function(){ _btCalcPU.apply(this,arguments); btPkgButtons(); };
 </script>
-<!-- build: on-site menus per person, Nov 10 2026 -->
+<!-- build: on-site + party trays tabs, Nov 10 2026 -->
 <script>
 /* ---------- Dishes that come with bread (MK, Nov 5): extra bread lines merge into the dish on the Kitchen Order ----------
    Invoice: "1 ST Chole Bhatura" + "10 PCS Bhatura" (charged on its own line)
@@ -2701,6 +2701,18 @@ window.setMode=function(md){ const r=_osMode.apply(this,arguments);
 /* menu dish suggestions come from the live tray menu */
 (async function(){ try{ if(typeof btLoadMenu==='function') await btLoadMenu(); }catch(e){} osLists(); })();
 osLists(); osRender();
+
+</script>
+<script>
+/* ---------- Two kinds of catering (MK, Nov 10): On-site Catering tab (Sangeet, weddings, live stations) and Party Trays To Go tab (off-site, with the per-person tray packages) ---------- */
+(function(){
+  const c=$('mCater'), t=$('mTrays');
+  if(c) c.textContent='On-site Catering';
+  if(t) t.textContent='Party Trays To Go';
+  const st=document.createElement('style');
+  st.textContent='body[data-mode="catering"] .pkgbar,body[data-mode="catering"] #pkgBtns,body[data-mode="catering"] #pkgSlots{display:none!important}';
+  document.head.appendChild(st);
+})();
 
 </script>
 </body>
