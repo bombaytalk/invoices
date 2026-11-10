@@ -2296,7 +2296,7 @@ window.renderTrayMenu=function(){
 const _btCalcPU=window.calc;
 window.calc=function(){ _btCalcPU.apply(this,arguments); btPkgButtons(); };
 </script>
-<!-- build: safe folder save, Nov 10 2026 -->
+<!-- build: one file per invoice, Nov 10 2026 -->
 <script>
 /* ---------- Dishes that come with bread (MK, Nov 5): extra bread lines merge into the dish on the Kitchen Order ----------
    Invoice: "1 ST Chole Bhatura" + "10 PCS Bhatura" (charged on its own line)
@@ -2716,40 +2716,61 @@ osLists(); osRender();
 
 </script>
 <script>
-/* ---------- ☁ OneDrive folder save that never gets stuck (MK, Nov 10) ----------
-   The error "state had changed since it was read from disk" happens when OneDrive is syncing / has just changed
-   the file we are overwriting. Now: retry, then replace the file, then save under a new name, and as a last resort
-   download the files — no error box. The invoice itself is always in the office register (💾 Save). */
+/* ---------- ☁ OneDrive folder save that never gets stuck and never leaves a second copy (MK, Nov 10) ----------
+   "state had changed since it was read from disk" = OneDrive is syncing the file we are overwriting.
+   Order: retry → delete old + write → write a temp file and swap it in → keep retrying quietly in the background
+   for up to 3 minutes → only then download the files. Only ONE file per invoice ever stays in the folder:
+   temp files and any older "(time)" copies are cleaned up on the next good save. */
 const btSleep=ms=>new Promise(r=>setTimeout(r,ms));
-async function btWriteOnce(dir,name,blob){ const fh=await dir.getFileHandle(name,{create:true}); const w=await fh.createWritable(); await w.write(blob); await w.close(); }
+async function btWriteOnce(dir,name,blob){ const fh=await dir.getFileHandle(name,{create:true}); const w=await fh.createWritable(); await w.write(blob); await w.close(); return fh; }
+async function btCleanup(dir,name){
+  const stem=name.replace(/\.[a-z]+$/i,''), ext=(name.match(/\.[a-z]+$/i)||[''])[0];
+  try{ for await (const [n] of dir.entries()){
+    if(n===name) continue;
+    if(n===name+'.saving' || (n.startsWith(stem+' (') && n.endsWith(')'+ext) && /\(\d{6}\)$/.test(n.slice(0,-ext.length)))){ try{ await dir.removeEntry(n); }catch(e){} }
+  } }catch(e){}
+}
 async function btWriteSafe(getDir,name,blob){
   let last;
-  for(let i=0;i<3;i++){ try{ await btWriteOnce(await getDir(),name,blob); return name; }catch(e){ last=e; await btSleep(700*(i+1)); } }
-  try{ const d=await getDir(); try{ await d.removeEntry(name); }catch(x){} await btWriteOnce(d,name,blob); return name; }catch(e){ last=e; }
-  const alt=name.replace(/(\.[a-z]+)$/i,' ('+new Date().toTimeString().slice(0,8).replace(/:/g,'')+')$1');
-  try{ await btWriteOnce(await getDir(),alt,blob); return alt; }catch(e){ last=e; }
+  for(let i=0;i<4;i++){ try{ const d=await getDir(); await btWriteOnce(d,name,blob); await btCleanup(d,name); return; }catch(e){ last=e; await btSleep(800*(i+1)); } }
+  try{ const d=await getDir(); try{ await d.removeEntry(name); }catch(x){} await btWriteOnce(d,name,blob); await btCleanup(d,name); return; }catch(e){ last=e; }
+  /* write a temp file, then swap it in under the real name */
+  try{ const d=await getDir(); const fh=await btWriteOnce(d,name+'.saving',blob);
+    if(fh.move){ try{ await d.removeEntry(name); }catch(x){} await fh.move(name); await btCleanup(d,name); return; } }catch(e){ last=e; }
   throw last;
 }
+let btPending=null;
+async function btFolderSave(getDir,files){ for(const [n,b] of files) await btWriteSafe(getDir,n,b); }
 window.saveToOneDrive=async function(forcePick){
   if(!window.showDirectoryPicker){ alert("This browser can't save straight to a folder. Use Word / Export instead, or open the app in Chrome or Edge on desktop."); return; }
   const g=gather().fields;
   if(!g.cName||!g.cName.trim()){ alert('Enter a client name first.'); return; }
   const ev=g.eDate||g.tDate||''; const d=parseDate(ev); const month=d?d.slice(0,7):'Undated';
-  const base=fnameBase(), doc=wordBlob(), js=jsonBlob();
+  const base=fnameBase(), files=[[base+'.doc',wordBlob()],[base+'.json',jsonBlob()]];
   let root;
   try{ root=await getRootDir(!!forcePick); }catch(e){ if(e&&e.name==='AbortError') return; root=null; }
-  /* fresh folder handles on every try, so a stale handle can't block the save */
   const getDir=async()=>{ const b=await root.getDirectoryHandle('Bombaytalk Invoices',{create:true}); return b.getDirectoryHandle(month,{create:true}); };
-  try{
-    if(!root) throw new Error('no folder');
-    const n1=await btWriteSafe(getDir,base+'.doc',doc);
-    await btWriteSafe(getDir,base+'.json',js);
-    flash('Saved to OneDrive ▸ Bombaytalk Invoices/'+month+(n1!==base+'.doc'?' (as a new copy)':''));
-  }catch(e){
-    if(e&&e.name==='AbortError') return;
-    dl(doc,base+'.doc'); dl(js,base+'.json');
-    flash('OneDrive folder was busy, so the files were downloaded instead. The invoice is safe in the office register.');
+  const where='OneDrive ▸ Bombaytalk Invoices/'+month;
+  try{ if(!root) throw new Error('no folder'); await btFolderSave(getDir,files); flash('Saved to '+where); return; }
+  catch(e){ if(e&&e.name==='AbortError') return; if(!root){ files.forEach(([n,b])=>dl(b,n)); flash('Files downloaded. The invoice is safe in the office register.'); return; } }
+  /* OneDrive is still busy: finish quietly in the background (the newest click wins) */
+  flash('OneDrive is busy syncing. It will finish saving in a moment, keep working.');
+  const job={}; btPending=job; const t0=Date.now();
+  while(Date.now()-t0<180000){
+    await btSleep(15000); if(btPending!==job) return;
+    try{ await btFolderSave(getDir,files); if(btPending===job){ btPending=null; flash('Saved to '+where); } return; }catch(e){}
   }
+  if(btPending===job){ btPending=null; files.forEach(([n,b])=>dl(b,n)); flash('OneDrive stayed busy, so the files were downloaded instead. The invoice is safe in the office register.'); }
+};
+/* file names / month folders: read dates the way staff type them ("Thurs, 12th Nov") and keep 2026-11-12 on the 12th (not the 11th) */
+window.parseDate=function(s){
+  s=String(s||'').trim(); if(!s) return null;
+  const iso=s.match(/^(\d{4})-(\d{2})-(\d{2})/); if(iso) return iso[1]+'-'+iso[2]+'-'+iso[3];
+  let t=s.replace(/^(mon|tue|wed|thu|fri|sat|sun)[a-z]*\.?,?\s*/i,'').replace(/(\d+)(st|nd|rd|th)\b/gi,'$1').replace(/,/g,' ').replace(/\s+/g,' ').trim();
+  if(!/(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*/i.test(t)&&!/\d{1,2}\/\d{1,2}/.test(t)) return null;
+  if(!/\d{4}/.test(t)) t+=' '+new Date().getFullYear();
+  const v=Date.parse(t); if(isNaN(v)) return null; const d=new Date(v);
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
 };
 
 </script>
