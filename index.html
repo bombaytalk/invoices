@@ -2034,7 +2034,7 @@ async function btDocxBlob(){
     const head=new TableRow({tableHeader:true,children:hd.map((h,i)=>cell(para(run(h,{bold:true,size:16,color:G,characterSpacing:15}),{alignment:al(i)}),{width:{size:cols[i],type:WidthType.DXA},borders:{top:b(GOLD,4),bottom:b(G,8),left:NB,right:NB},margins:{top:60,bottom:60,left:80,right:80}}))});
     const body=items.map(r=>{
       const v=[String(r.q||'')].concat(m==='trays'?[r.size||'—']:[],[r.desc]).concat(kitchen?[]:[r.p?money(r.p):'',r.amt?money(r.amt):(r.opt?'Included':'')]);
-      return new TableRow({cantSplit:true,children:v.map((x,i)=>cell(para(run(x,{size:hd[i]==='SIZE'?18:20,italics:!!(r.opt&&hd[i]==='DESCRIPTION'),bold:!!(kitchen&&(hd[i]==='QTY'||hd[i]==='DESCRIPTION'))}),{alignment:al(i)}),
+      return new TableRow({cantSplit:true,children:v.map((x,i)=>cell(String(x).split('\n').map((ln,j)=>para(run(ln,{size:hd[i]==='SIZE'?18:(j&&hd[i]==='DESCRIPTION'?18:20),italics:!!(r.opt&&hd[i]==='DESCRIPTION'),bold:!!(kitchen&&(hd[i]==='QTY'||(hd[i]==='DESCRIPTION'&&!j)))||!!(j===0&&hd[i]==='DESCRIPTION'&&String(x).includes('\n'))}),{alignment:al(i)})),
         {width:{size:cols[i],type:WidthType.DXA},borders:{bottom:b(ROW,4),top:NB,left:NB,right:NB},margins:{top:70,bottom:70,left:80,right:80}}))});
     });
     out.push(gap(6)); out.push(table([head].concat(body),cols));
@@ -2296,7 +2296,7 @@ window.renderTrayMenu=function(){
 const _btCalcPU=window.calc;
 window.calc=function(){ _btCalcPU.apply(this,arguments); btPkgButtons(); };
 </script>
-<!-- build: no duplicate invoices, Nov 8 2026 -->
+<!-- build: on-site menus per person, Nov 8 2026 -->
 <script>
 /* ---------- Dishes that come with bread (MK, Nov 5): extra bread lines merge into the dish on the Kitchen Order ----------
    Invoice: "1 ST Chole Bhatura" + "10 PCS Bhatura" (charged on its own line)
@@ -2493,6 +2493,210 @@ window.fromRef=async function(ref){
 };
 /* Duplicate / New / Import → start as a new invoice; chip updates via calc */
 btModeShow();
+
+</script>
+<script>
+/* ---------- On-site catering menus, priced per person (MK, Nov 8) ----------
+   Catering tab: pick the event (Sangeet / Wedding Lunch / Cocktail Hour / Dinner / Custom) and Silver or Gold,
+   type guests and the per-person rate (no fixed prices — they vary per event), choose the dishes and live stations.
+   The invoice gets one line per menu: "<guests> × <rate>" with the full menu in the description.
+   Extra live stations beyond the package = their own line, guests × $ per person.
+   Staff, station chef, rentals, setup → ＋ Add option.  Service charge % = the Service charge box. */
+const OS_STATIONS=['South Indian Griddle (Dosa)','Indo-Chinese Live Wok','Indo-Mexican Taco Bar','Italian Pasta & Flatbread','Bombay Sliders & Rolls','Modern Chaat','Paneer & Tandoor (outdoor tandoor)','Pav Bhaji & Street Food','Live Jalebi with Rabri','Contemporary Desserts','Live Dessert Specials','Mithai Table','Grazing Table','Welcome Drinks & Sharbat','Breakfast & Brunch Live'];
+const OS_DRINKS=['Mango Lassi','Sweet Lassi','Rose Sharbat','Kokum Sharbat','Jaljeera','Fresh Lime Soda','Mocktail','Masala Chai','Filter Coffee'];
+const OS_C={drink:'Welcome drink',app:'Appetizer',station:'Live station',rice:'Rice',veg:'Vegetable entrée',dal:'Dal / Kadhi',bread:'Bread',dessert:'Dessert'};
+const OS_PL={drink:'Welcome drink',app:'Appetizers',station:'Live stations',rice:'Rice',veg:'Entrées',dal:'Dal / Kadhi',bread:'Breads',dessert:'Desserts'};
+const OS_DEF={
+ 'Sangeet':{
+  Silver:{s:[['drink',1],['app',1],['station',3],['rice',1],['dessert',1]],fixed:'Salad bar'},
+  Gold:{s:[['drink',1],['app',2],['station',4],['rice',1],['dessert',2]],fixed:'Salad bar'}},
+ 'Wedding Lunch':{
+  Silver:{s:[['app',2],['veg',2],['dal',1],['rice',1],['bread',1],['dessert',1]],fixed:'Salad bar'},
+  Gold:{s:[['app',3],['veg',3],['dal',1],['rice',1],['bread',2],['dessert',2]],fixed:'Full Gujarati salad bar'}},
+ 'Cocktail Hour':{
+  Silver:{s:[['app',3,'2 butler-passed'],['station',2]],fixed:''},
+  Gold:{s:[['app',4,'2 butler-passed, 2 buffet'],['station',3]],fixed:''}},
+ 'Dinner':{
+  Silver:{s:[['veg',2],['dal',1],['rice',1],['bread',2],['dessert',2]],fixed:'Salad bar'},
+  Gold:{s:[['veg',3,'one can be paneer'],['dal',1],['rice',1],['bread',2,'assorted breads'],['dessert',2]],fixed:'Salad bar'}},
+ 'Custom':{
+  Silver:{s:[['drink',1],['app',3],['station',2],['veg',2],['dal',1],['rice',1],['bread',2],['dessert',2]],fixed:''},
+  Gold:{s:[['drink',1],['app',3],['station',2],['veg',2],['dal',1],['rice',1],['bread',2],['dessert',2]],fixed:''}}
+};
+let osMenus=[];   // [{id,ev,tier,guests,rate,picks:{k:[...]},extras:[{st,pp}]}]
+const osId=()=>'m'+Math.random().toString(36).slice(2,8);
+
+/* ---- options list: staff, chef, rentals ---- */
+(function(){
+  const i=BT_OPTIONS.findIndex(o=>o.custom);
+  const so=BT_OPTIONS.find(o=>o.n==='Service staff'); if(so) so.hint='qty = servers × hours, price = $ per hour';
+  const ch=BT_OPTIONS.find(o=>o.n==='Live-station chef'); if(ch){ ch.n='Live-station chef fee'; ch.hint='qty = number of station chefs'; }
+  const add=[{n:'Rentals (linens, china, glassware)',c:'Other',cater:true},{n:'Venue setup & breakdown',c:'Labor',cater:true}];
+  add.forEach(o=>{ if(!BT_OPTIONS.some(x=>x.n===o.n)) BT_OPTIONS.splice(i<0?BT_OPTIONS.length:i,0,o); });
+})();
+
+/* ---- the builder box (Catering tab only, never printed) ---- */
+(function(){
+  const st=document.createElement('style'); st.textContent=`
+#osBox{border:1.5px solid #A8843A;border-radius:8px;padding:12px 14px;margin:0 0 10px;font-size:14.5px;background:#fff}
+#osBox h4{margin:0 0 8px;font:600 16px Lora,Georgia,serif;color:#1F3D2B}
+#osBox .osm{border-top:1px solid #E5DDCB;padding:10px 0 4px}
+#osBox .osm:first-of-type{border-top:none;padding-top:0}
+#osBox .row{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;margin:6px 0}
+#osBox .seg button{border:1.5px solid #1F3D2B;background:#fff;color:#1F3D2B;border-radius:6px;padding:7px 12px;font-weight:600;font-size:14px;cursor:pointer}
+#osBox .seg button.on{background:#1F3D2B;color:#fff}
+#osBox label{display:inline-flex;align-items:center;gap:6px;font-weight:600;color:#1F3D2B}
+#osBox input,#osBox select{font:inherit;font-size:14.5px;padding:6px 8px;border:1px solid #D9CFB8;border-radius:6px;background:#fff}
+#osBox input.need{border-color:#B3261E}
+#osBox .grid{display:grid;grid-template-columns:150px 1fr;gap:6px 10px;align-items:center;margin-top:6px}
+#osBox .grid b{font-weight:600;color:#5E5A50;font-size:13.5px}
+#osBox .picks{display:flex;flex-wrap:wrap;gap:6px}
+#osBox .picks input,#osBox .picks select{min-width:210px;flex:1 1 210px}
+#osBox .tot{color:#1F3D2B;font-weight:700}
+#osBox .mut{color:#5E5A50;font-size:13px}
+#osBox .lnk{background:none;border:none;color:#A8843A;font-weight:700;cursor:pointer;padding:4px 0;font-size:14px}
+#osBox .rm{background:none;border:1px solid #D9CFB8;border-radius:6px;color:#B3261E;cursor:pointer;padding:4px 9px}
+#itemsBody tr.osrow textarea.desc{background:#FBF8F1}
+@media print{#osBox{display:none!important}}`; document.head.appendChild(st);
+  const anchor=document.querySelector('.pkgbar')||$('itemsTbl');
+  const box=document.createElement('div'); box.id='osBox'; box.className='cateronly hideprint';
+  anchor.parentNode.insertBefore(box,anchor);
+  const dl=document.createElement('div'); dl.id='osLists'; dl.style.display='none'; document.body.appendChild(dl);
+})();
+
+function osDishList(k){
+  if(k==='drink') return OS_DRINKS;
+  const sec=(typeof BT_SLOTSEC!=='undefined'&&BT_SLOTSEC[k])?BT_SLOTSEC[k].sec:[];
+  const out=[]; (btMenu||[]).forEach(s=>{ if(sec.some(n=>n.toLowerCase()===s.sec.toLowerCase())) s.items.forEach(it=>{ if(out.indexOf(it.n)<0) out.push(it.n); }); });
+  return out;
+}
+function osLists(){
+  const h=['drink','app','rice','veg','dal','bread','dessert'].map(k=>`<datalist id="osdl_${k}">${osDishList(k).map(n=>`<option value="${esc(n)}">`).join('')}</datalist>`).join('');
+  $('osLists').innerHTML=h;
+}
+function osSlots(m){ const d=(OS_DEF[m.ev]||{})[m.tier]; return d?d.s:[]; }
+function osRender(){
+  const b=$('osBox'); if(!b) return;
+  const ev=Object.keys(OS_DEF);
+  let h='<h4>On-site event menu · priced per person</h4>';
+  if(!osMenus.length) h+='<div class="mut">For on-site events. Pick the event and Silver / Gold, then type the guests and the per-person rate for this client.</div>';
+  osMenus.forEach((m,mi)=>{
+    const tot=(+m.guests||0)*(+m.rate||0)+m.extras.reduce((a,x)=>a+(+m.guests||0)*(+x.pp||0),0);
+    h+=`<div class="osm"><div class="row"><span class="seg">${ev.map(e=>`<button class="${m.ev===e?'on':''}" onclick="osEv(${mi},'${e}')">${e}</button>`).join(' ')}</span>
+      <span class="seg"><button class="${m.tier==='Silver'?'on':''}" onclick="osTier(${mi},'Silver')">Silver</button> <button class="${m.tier==='Gold'?'on':''}" onclick="osTier(${mi},'Gold')">Gold</button></span>
+      <button class="rm" title="Remove this menu" onclick="osDel(${mi})">Remove</button></div>`;
+    if(m.ev){
+      h+=`<div class="row"><label>Guests <input type="number" min="0" style="width:90px" class="${+m.guests?'':'need'}" value="${esc(m.guests||'')}" oninput="osSet(${mi},'guests',this.value,this)"></label>
+        <label>Rate $ / person <input type="number" min="0" step="0.5" style="width:100px" class="${+m.rate?'':'need'}" placeholder="type" value="${esc(m.rate||'')}" oninput="osSet(${mi},'rate',this.value,this)"></label>
+        <span class="tot" id="osTot${mi}">${tot?money(tot):''}</span></div><div class="grid">`;
+      osSlots(m).forEach(([k,n,hint])=>{
+        const v=(m.picks[k]||[]);
+        h+=`<b>${esc(OS_PL[k])}${n>1?' ('+n+')':''}${hint?'<br><span class="mut">'+esc(hint)+'</span>':''}</b><div class="picks">`;
+        for(let i=0;i<n;i++){
+          if(k==='station') h+=`<select onchange="osPick(${mi},'${k}',${i},this.value)"><option value="">— choose station —</option>${OS_STATIONS.map(s=>`<option ${v[i]===s?'selected':''}>${esc(s)}</option>`).join('')}</select>`;
+          else h+=`<input list="osdl_${k}" placeholder="${esc(OS_C[k])} ${n>1?i+1:''}" value="${esc(v[i]||'')}" oninput="osPick(${mi},'${k}',${i},this.value)">`;
+        }
+        h+='</div>';
+      });
+      const fx=((OS_DEF[m.ev]||{})[m.tier]||{}).fixed; if(fx) h+=`<b>Included</b><div class="mut">${esc(fx)}</div>`;
+      h+=`<b>Extra live stations<br><span class="mut">guests × $ per person</span></b><div>`;
+      m.extras.forEach((x,xi)=>{ h+=`<div class="row" style="margin:2px 0"><select onchange="osX(${mi},${xi},'st',this.value)"><option value="">— choose station —</option>${OS_STATIONS.map(s=>`<option ${x.st===s?'selected':''}>${esc(s)}</option>`).join('')}</select>
+        <label>$ / person <input type="number" min="0" step="0.5" style="width:90px" class="${+x.pp?'':'need'}" value="${esc(x.pp||'')}" oninput="osX(${mi},${xi},'pp',this.value,this)"></label>
+        <button class="rm" onclick="osXDel(${mi},${xi})">×</button></div>`; });
+      h+=`<button class="lnk" onclick="osXAdd(${mi})">＋ Extra live station</button></div></div>`;
+    }
+    h+='</div>';
+  });
+  h+=`<div class="row"><button class="lnk" onclick="osAdd()">＋ ${osMenus.length?'Another event menu (e.g. Sangeet + Wedding Lunch)':'Add on-site event menu'}</button>
+      <span class="mut">Staff, station chef, rentals, setup: <b>＋ Add option</b> below · service charge %: the Service charge box.</span></div>`;
+  b.innerHTML=h;
+}
+function osAdd(){ osMenus.push({id:osId(),ev:'',tier:'Gold',guests:$('eGuests').value||'',rate:'',picks:{},extras:[]}); osRender(); osSync(); }
+function osDel(mi){ if(!confirm('Remove this event menu from the invoice?')) return; osMenus.splice(mi,1); osRender(); osSync(); }
+function osEv(mi,e){ osMenus[mi].ev=e; if(!osMenus[mi].guests) osMenus[mi].guests=$('eGuests').value||''; osRender(); osSync(); }
+function osTier(mi,t){ osMenus[mi].tier=t; osRender(); osSync(); }
+function osSet(mi,k,v,el){ osMenus[mi][k]=v; if(el) el.classList.toggle('need',!(+v)); osSync(); osTotShow(mi); }
+function osPick(mi,k,i,v){ const p=osMenus[mi].picks; (p[k]=p[k]||[])[i]=v; osSync(); }
+function osX(mi,xi,k,v,el){ osMenus[mi].extras[xi][k]=v; if(el) el.classList.toggle('need',!(+v)); osSync(); osTotShow(mi); }
+function osXAdd(mi){ osMenus[mi].extras.push({st:'',pp:''}); osRender(); osSync(); }
+function osXDel(mi,xi){ osMenus[mi].extras.splice(xi,1); osRender(); osSync(); }
+function osTotShow(mi){ const m=osMenus[mi], e=$('osTot'+mi); if(!e) return; const t=(+m.guests||0)*(+m.rate||0)+m.extras.reduce((a,x)=>a+(+m.guests||0)*(+x.pp||0),0); e.textContent=t?money(t):''; }
+
+/* the description printed on the invoice / kitchen order */
+function osDesc(m){
+  const L=[m.ev+(m.ev==='Custom'?' menu':'')+' · '+m.tier+' package · per person'];
+  osSlots(m).forEach(([k,n,hint])=>{
+    const v=(m.picks[k]||[]).slice(0,n).filter(x=>x&&x.trim());
+    const tbd=n-v.length;
+    if(m.ev==='Custom'&&!v.length) return;
+    L.push(OS_PL[k]+': '+(v.length?v.join(', '):'')+(tbd>0&&m.ev!=='Custom'?(v.length?', ':'')+(tbd>1?tbd+' to be chosen':'to be chosen'):'')+(hint&&k==='app'?' ('+hint+')':''));
+  });
+  const fx=((OS_DEF[m.ev]||{})[m.tier]||{}).fixed; if(fx) L.push(fx);
+  return L.join('\n');
+}
+/* keep the invoice lines in step with the box */
+function osSync(){
+  const body=$('itemsBody'); if(!body) return;
+  const want=[];
+  osMenus.forEach(m=>{ if(!m.ev) return;
+    want.push({key:m.id,main:true,m,qty:m.guests||'',desc:osDesc(m),price:m.rate||''});
+    m.extras.forEach((x,xi)=>want.push({key:m.id+'_x'+xi,m,qty:m.guests||'',desc:'Extra live station · '+(x.st||'to be chosen')+' · per person ('+m.ev+')',price:x.pp||''}));
+  });
+  const have={}; body.querySelectorAll('tr.osrow').forEach(tr=>{ have[tr.dataset.os]=tr; });
+  Object.keys(have).forEach(k=>{ if(!want.some(w=>w.key===k)) have[k].remove(); });
+  let after=null;
+  want.forEach(w=>{
+    let tr=have[w.key];
+    if(!tr){ addItem({qty:w.qty,desc:w.desc,category:'Food',unitPrice:w.price,taxable:true}); tr=body.lastElementChild; tr.classList.add('osrow'); tr.dataset.os=w.key;
+      const ta=tr.querySelector('textarea'); ta.readOnly=true; ta.title='Change this in the On-site event menu box above';
+      tr.querySelectorAll('.qin,.pin').forEach(i=>{ i.readOnly=true; i.title='Change this in the On-site event menu box above'; });
+      const del=tr.querySelector('.rowdel'); if(del) del.setAttribute('onclick',"osRowDel(this)"); }
+    tr.querySelector('.qin').value=w.qty; tr.querySelector('.pin').value=w.price;
+    const ta=tr.querySelector('textarea'); if(ta.value!==w.desc){ ta.value=w.desc; grow(ta); }
+    if(w.main) tr.dataset.osm=JSON.stringify(w.m); else delete tr.dataset.osm;
+    /* menu lines stay at the top, in order */
+    const ref=after?after.nextElementSibling:body.firstElementChild; if(ref!==tr) body.insertBefore(tr,ref); after=tr;
+  });
+  calc();
+}
+function osRowDel(btn){ const k=btn.closest('tr').dataset.os||''; const id=k.split('_x')[0]; const mi=osMenus.findIndex(m=>m.id===id);
+  if(mi<0){ btn.closest('tr').remove(); calc(); return; }
+  if(k.includes('_x')){ osXDel(mi,+k.split('_x')[1]); return; } osDel(mi); }
+
+/* save / open / new */
+const _osGather=window.gather;
+window.gather=function(){ const d=_osGather.apply(this,arguments); const trs=[...$('itemsBody').querySelectorAll('tr')];
+  /* gather drops nothing for these rows (they have text); match by order of rows with text */
+  const live=trs.filter(tr=>tr.querySelector('textarea').value.trim()||tr.querySelector('.pin').value||tr.dataset.opt==='1');
+  (d.items||[]).forEach((it,i)=>{ const tr=live[i]; if(tr&&tr.dataset.os){ it.os=tr.dataset.os; if(tr.dataset.osm) it.osMenu=tr.dataset.osm; } });
+  return d; };
+const _osLoad=window.load;
+window.load=function(doc){ osMenus=[]; const r=_osLoad.apply(this,arguments);
+  try{ const trs=[...$('itemsBody').querySelectorAll('tr')];
+    (doc&&doc.items||[]).forEach(it=>{ if(it&&it.osMenu){ try{ osMenus.push(JSON.parse(it.osMenu)); }catch(e){} } });
+    /* drop the plain rows that came from the saved menu lines; osSync rebuilds them as menu lines */
+    (doc&&doc.items||[]).forEach(it=>{ if(it&&it.os){ const tr=trs.find(t=>t.querySelector('textarea').value===it.desc&&!t.dataset.osdone); if(tr){ tr.dataset.osdone='1'; tr.remove(); } } });
+  }catch(e){}
+  osRender(); if(osMenus.length) osSync(); return r; };
+const _osNew=window.newDoc;
+window.newDoc=function(){ osMenus=[]; const r=_osNew.apply(this,arguments); osRender(); return r; };
+const _osMiss=window.btMissing;
+window.btMissing=function(){ const m=_osMiss.apply(this,arguments);
+  if(document.body.dataset.mode!=='trays') osMenus.forEach(o=>{ if(!o.ev) return;
+    if(!(+o.guests)) m.push('Guests for the '+o.ev+' menu');
+    if(!(+o.rate)) m.push('Per-person rate for the '+o.ev+' menu');
+    o.extras.forEach(x=>{ if(!x.st) m.push('Extra live station name ('+o.ev+')'); if(!(+x.pp)) m.push('$ per person for '+(x.st||'the extra live station')); }); });
+  return m; };
+/* on-site menus belong to the Catering tab */
+const _osMode=window.setMode;
+window.setMode=function(md){ const r=_osMode.apply(this,arguments);
+  if(md==='trays'&&osMenus.some(m=>m.ev)){ /* keep them but they do not apply to party trays */ }
+  return r; };
+/* "Grat" box reads as Service charge / gratuity */
+(function(){ const g=$('gratPct'); if(g&&g.parentNode&&g.parentNode.tagName==='LABEL'){ const n=g.parentNode.firstChild; if(n&&n.nodeType===3) n.textContent='Service charge / Grat '; } })();
+/* menu dish suggestions come from the live tray menu */
+(async function(){ try{ if(typeof btLoadMenu==='function') await btLoadMenu(); }catch(e){} osLists(); })();
+osLists(); osRender();
 
 </script>
 </body>
