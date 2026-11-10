@@ -2296,7 +2296,7 @@ window.renderTrayMenu=function(){
 const _btCalcPU=window.calc;
 window.calc=function(){ _btCalcPU.apply(this,arguments); btPkgButtons(); };
 </script>
-<!-- build: word file only, Nov 10 2026 -->
+<!-- build: folder button + backup folder, Nov 10 2026 -->
 <script>
 /* ---------- Dishes that come with bread (MK, Nov 5): extra bread lines merge into the dish on the Kitchen Order ----------
    Invoice: "1 ST Chole Bhatura" + "10 PCS Bhatura" (charged on its own line)
@@ -2740,28 +2740,34 @@ async function btWriteSafe(getDir,name,blob){
   throw last;
 }
 let btPending=null;
-async function btFolderSave(getDir,files){ for(const [n,b] of files) await btWriteSafe(getDir,n,b); await btDropJson(getDir); }
-/* remove the old app-made .json files (the ones sitting next to a .doc of the same name) */
-async function btDropJson(getDir){ try{ const d=await getDir(); const names=[]; for await (const [n] of d.entries()) names.push(n);
-  for(const n of names){ if(/\.json$/i.test(n) && names.indexOf(n.replace(/\.json$/i,'.doc'))>=0){ try{ await d.removeEntry(n); }catch(e){} } } }catch(e){} }
+const BT_BAK='_Backup files (do not open)';
+async function btFolderSave(getDir,files,getBak,json){ for(const [n,b] of files) await btWriteSafe(getDir,n,b);
+  if(getBak&&json){ try{ await btWriteSafe(getBak,json[0],json[1]); }catch(e){} await btDropJson(getDir,getBak); } }
+/* move the old app-made .json files (next to a .doc of the same name) into the backup folder */
+async function btDropJson(getDir,getBak){ try{ const d=await getDir(); const names=[]; for await (const [n] of d.entries()) names.push(n);
+  for(const n of names){ if(/\.json$/i.test(n) && names.indexOf(n.replace(/\.json$/i,'.doc'))>=0){
+    try{ const f=await (await d.getFileHandle(n)).getFile(); const bk=await getBak(); let ex=false; try{ await bk.getFileHandle(n); ex=true; }catch(x){}
+      if(!ex) await btWriteOnce(bk,n,f); await d.removeEntry(n); }catch(e){} } } }catch(e){} }
 window.saveToOneDrive=async function(forcePick){
   if(!window.showDirectoryPicker){ alert("This browser can't save straight to a folder. Use Word / Export instead, or open the app in Chrome or Edge on desktop."); return; }
   const g=gather().fields;
   if(!g.cName||!g.cName.trim()){ alert('Enter a client name first.'); return; }
   const ev=g.eDate||g.tDate||''; const d=parseDate(ev); const month=d?d.slice(0,7):'Undated';
-  const base=fnameBase(), files=[[base+'.doc',wordBlob()]];   /* Word file only — no .json (MK, Nov 10: office kept trying to open it) */
+  const base=fnameBase(), files=[[base+'.doc',wordBlob()]];   /* Word file in the month folder; the .json goes to the backup folder (MK, Nov 10) */
+  const json=[base+'.json',jsonBlob()];
   let root;
   try{ root=await getRootDir(!!forcePick); }catch(e){ if(e&&e.name==='AbortError') return; root=null; }
   const getDir=async()=>{ const b=await root.getDirectoryHandle('Bombaytalk Invoices',{create:true}); return b.getDirectoryHandle(month,{create:true}); };
-  const where='OneDrive ▸ Bombaytalk Invoices/'+month;
-  try{ if(!root) throw new Error('no folder'); await btFolderSave(getDir,files); flash('Saved to '+where); return; }
+  const getBak=async()=>{ const b=await root.getDirectoryHandle('Bombaytalk Invoices',{create:true}); const k=await b.getDirectoryHandle(BT_BAK,{create:true}); return k.getDirectoryHandle(month,{create:true}); };
+  const where=(root&&root.name?root.name+' ▸ ':'')+'Bombaytalk Invoices ▸ '+month; btFolderShow(root);
+  try{ if(!root) throw new Error('no folder'); await btFolderSave(getDir,files,getBak,json); flash('Saved to '+where); return; }
   catch(e){ if(e&&e.name==='AbortError') return; if(!root){ files.forEach(([n,b])=>dl(b,n)); flash('Word file downloaded. The invoice is safe in the office register.'); return; } }
   /* OneDrive is still busy: finish quietly in the background (the newest click wins) */
   flash('OneDrive is busy syncing. It will finish saving in a moment, keep working.');
   const job={}; btPending=job; const t0=Date.now();
   while(Date.now()-t0<180000){
     await btSleep(15000); if(btPending!==job) return;
-    try{ await btFolderSave(getDir,files); if(btPending===job){ btPending=null; flash('Saved to '+where); } return; }catch(e){}
+    try{ await btFolderSave(getDir,files,getBak,json); if(btPending===job){ btPending=null; flash('Saved to '+where); } return; }catch(e){}
   }
   if(btPending===job){ btPending=null; files.forEach(([n,b])=>dl(b,n)); flash('OneDrive stayed busy, so the Word file was downloaded instead. The invoice is safe in the office register.'); }
 };
@@ -2775,6 +2781,19 @@ window.parseDate=function(s){
   const v=Date.parse(t); if(isNaN(v)) return null; const d=new Date(v);
   return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
 };
+
+/* 📂 Folder button: choose / change where invoices are saved, and always show the current folder (MK, Nov 10) */
+function btFolderShow(h){ const b=document.getElementById('btFolderBtn'); if(!b) return; const n=h&&h.name?h.name:'';
+  b.textContent='📂 '+(n?'Folder: '+n:'Choose folder'); b.title=n?('Invoices save to: '+n+' ▸ Bombaytalk Invoices ▸ <month>. Click to change.'):'Choose the folder for ☁ OneDrive saves'; }
+async function btChangeFolder(){
+  if(!window.showDirectoryPicker){ alert("This browser can't save straight to a folder. Use Chrome or Edge on the office computer."); return; }
+  try{ const h=await getRootDir(true); btFolderShow(h); flash('Invoices will now save to: '+h.name+' ▸ Bombaytalk Invoices'); }catch(e){}
+}
+(function(){
+  const ob=[...document.querySelectorAll('.toolbar button')].find(b=>/saveToOneDrive/.test(b.getAttribute('onclick')||'')); if(!ob) return;
+  const b=document.createElement('button'); b.className='ghost'; b.id='btFolderBtn'; b.textContent='📂 Choose folder'; b.onclick=btChangeFolder; ob.after(b);
+  (async()=>{ try{ const h=await _idbGet(BT_DIRKEY); if(h) btFolderShow(h); }catch(e){} })();
+})();
 
 </script>
 </body>
