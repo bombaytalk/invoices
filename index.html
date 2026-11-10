@@ -2296,7 +2296,7 @@ window.renderTrayMenu=function(){
 const _btCalcPU=window.calc;
 window.calc=function(){ _btCalcPU.apply(this,arguments); btPkgButtons(); };
 </script>
-<!-- build: new invoice flow, Nov 10 2026 -->
+<!-- build: organized filing + file name, Nov 10 2026 -->
 <script>
 /* ---------- Dishes that come with bread (MK, Nov 5): extra bread lines merge into the dish on the Kitchen Order ----------
    Invoice: "1 ST Chole Bhatura" + "10 PCS Bhatura" (charged on its own line)
@@ -2819,6 +2819,86 @@ window.newDoc=async function(){
     } else if(!confirm('Start a new invoice WITHOUT saving these changes?\n\nOK = discard changes and start new\nCancel = stay on this invoice')) return;
   }
   const r=_nwNew.apply(this,arguments); btClean=btSnap(); window.scrollTo(0,0); return r;
+};
+
+</script>
+<script>
+/* ---------- Organized OneDrive filing + editable file name (MK, Nov 10) ----------
+   <folder> ▸ Bombaytalk Invoices ▸ Party Trays To Go ▸ 2026-11 ▸ 2026-11-12 Party Trays To Go - Morgan & Stanley - BT-2026-0010.doc
+   <folder> ▸ Bombaytalk Invoices ▸ On-site Catering  ▸ 2026-12 ▸ 2026-12-12 On-site Catering - Patel Wedding - BT-2026-0011.doc
+   ☁ OneDrive asks for the file name (suggested name filled in — press Enter to keep it, or type a different one).
+   The name is remembered with the invoice, and if it is renamed or moved, the old file is removed: one file per invoice. */
+function btTypeName(){ return document.body.dataset.mode==='trays'?'Party Trays To Go':'On-site Catering'; }
+function btSafeName(s){ return String(s||'').replace(/[\\\/:*?"<>|]+/g,'-').replace(/\s+/g,' ').trim().replace(/\.(doc|docx|json)$/i,'').slice(0,120); }
+function btDefaultName(){
+  const g=gather().fields; const ev=g.eDate||g.tDate||''; const d=parseDate(ev);
+  return btSafeName([(d||'Undated')+' '+btTypeName(), (g.cName||'Invoice').trim(), (g.invNo||'')].filter(Boolean).join(' - '));
+}
+/* keep the chosen name / place with the invoice */
+let btFile={name:'',path:''};
+const _fnGather=window.gather; window.gather=function(){ const d=_fnGather.apply(this,arguments); if(d&&d.fields){ d.fields.fileName=btFile.name||''; d.fields.filePath=btFile.path||''; } return d; };
+const _fnLoad=window.load; window.load=function(doc){ const f=(doc&&doc.fields)||{}; btFile={name:f.fileName||'',path:f.filePath||''}; return _fnLoad.apply(this,arguments); };
+const _fnNew=window.newDoc; window.newDoc=async function(){ const r=await _fnNew.apply(this,arguments); if(!btIsBlank||btIsBlank()) btFile={name:'',path:''}; return r; };
+/* ask for the name */
+function btAskName(def){
+  return new Promise(res=>{
+    const w=document.createElement('div');
+    w.innerHTML=`<div style="position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:200;display:flex;align-items:center;justify-content:center;font-family:Poppins,Arial,sans-serif">
+     <div style="background:#fff;border:1.5px solid #A8843A;border-radius:10px;padding:18px 20px;width:min(640px,92vw)">
+      <div style="font:600 18px Lora,Georgia,serif;color:#1F3D2B;margin-bottom:6px">Save to OneDrive</div>
+      <div style="font-size:14px;color:#5E5A50;margin-bottom:10px">File name (change it if you like):</div>
+      <input id="btFnIn" style="width:100%;box-sizing:border-box;font-size:16px;padding:9px 10px;border:1px solid #D9CFB8;border-radius:6px">
+      <div style="font-size:13px;color:#5E5A50;margin-top:8px" id="btFnWhere"></div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:14px">
+       <button id="btFnCancel" style="font-size:15px;padding:8px 14px;border:1px solid #D9CFB8;background:#fff;border-radius:6px;cursor:pointer">Cancel</button>
+       <button id="btFnOk" style="font-size:15px;padding:8px 16px;border:none;background:#1F3D2B;color:#fff;border-radius:6px;cursor:pointer;font-weight:600">Save</button></div></div></div>`;
+    document.body.appendChild(w);
+    const inp=w.querySelector('#btFnIn'); inp.value=def; inp.focus(); inp.select();
+    const g=gather().fields, d=parseDate(g.eDate||g.tDate||'');
+    w.querySelector('#btFnWhere').textContent='Folder: Bombaytalk Invoices ▸ '+btTypeName()+' ▸ '+(d?d.slice(0,7):'Undated');
+    const done=v=>{ w.remove(); res(v); };
+    w.querySelector('#btFnOk').onclick=()=>done(btSafeName(inp.value)||def);
+    w.querySelector('#btFnCancel').onclick=()=>done(null);
+    inp.onkeydown=e=>{ if(e.key==='Enter') done(btSafeName(inp.value)||def); if(e.key==='Escape') done(null); };
+  });
+}
+async function btDirPath(root,parts,create){ let d=root; for(const p of parts) d=await d.getDirectoryHandle(p,{create:!!create}); return d; }
+window.saveToOneDrive=async function(forcePick){
+  if(!window.showDirectoryPicker){ alert("This browser can't save straight to a folder. Use Word instead, or open the app in Chrome or Edge on the office computer."); return; }
+  const g=gather().fields;
+  if(!g.cName||!g.cName.trim()){ alert('Enter a client name first.'); return; }
+  const wasClean=(typeof btClean==='undefined')||btSnap()===btClean;
+  const name=await btAskName(btFile.name||btDefaultName()); if(!name) return;
+  const d=parseDate(g.eDate||g.tDate||''); const month=d?d.slice(0,7):'Undated', type=btTypeName();
+  const parts=['Bombaytalk Invoices',type,month], path=parts.concat([name]).join('/');
+  const prev=btFile.path, legacyBase=fnameBase();   /* older saves: Bombaytalk Invoices/<month>/<date_client>.doc */
+  btFile={name,path};
+  const docB=wordBlob(), jsonB=jsonBlob();
+  let root; try{ root=await getRootDir(!!forcePick); }catch(e){ if(e&&e.name==='AbortError') return; root=null; }
+  btFolderShow(root);
+  const getDir=()=>btDirPath(root,parts,true);
+  const getBak=()=>btDirPath(root,['Bombaytalk Invoices',BT_BAK,type,month],true);
+  const tidy=async()=>{   /* one file per invoice: remove where it used to be */
+    if(prev&&prev!==path){ const pp=prev.split('/'), nm=pp.pop();
+      try{ const od=await btDirPath(root,pp,false); await od.removeEntry(nm+'.doc'); }catch(e){}
+      try{ const ob=await btDirPath(root,['Bombaytalk Invoices',BT_BAK].concat(pp.slice(1)),false); await ob.removeEntry(nm+'.json'); }catch(e){} }
+    try{ const ld=await btDirPath(root,['Bombaytalk Invoices',month],false);
+      for(const ext of ['.doc','.json']){ try{ const f=await (await ld.getFileHandle(legacyBase+ext)).getFile();
+        if(ext==='.json'){ const b=await getBak(); try{ await b.getFileHandle(legacyBase+'.json'); }catch(x){ await btWriteOnce(b,legacyBase+'.json',f); } }
+        await ld.removeEntry(legacyBase+ext); }catch(e){} } }catch(e){}
+  };
+  const where=(root&&root.name?root.name+' ▸ ':'')+'Bombaytalk Invoices ▸ '+type+' ▸ '+month;
+  const run=async()=>{ await btWriteSafe(getDir,name+'.doc',docB); try{ await btWriteSafe(getBak,name+'.json',jsonB); }catch(e){} await tidy(); };
+  if(!root){ dl(docB,name+'.doc'); flash('Word file downloaded. The invoice is safe in the office register.'); return; }
+  try{ await run(); flash('Saved to '+where); }
+  catch(e){
+    flash('OneDrive is busy syncing. It will finish saving in a moment, keep working.');
+    const job={}; btPending=job; const t0=Date.now();
+    while(Date.now()-t0<180000){ await btSleep(15000); if(btPending!==job) return; try{ await run(); if(btPending===job){ btPending=null; flash('Saved to '+where); } return; }catch(x){} }
+    if(btPending===job){ btPending=null; dl(docB,name+'.doc'); flash('OneDrive stayed busy, so the Word file was downloaded instead. The invoice is safe in the office register.'); }
+  }
+  /* remember the file name with the invoice in the register (quietly, only if it is already saved) */
+  if(g.invNo && wasClean && typeof btApi==='function'){ try{ const dd=gather(); const t=computeTotals(); dd.totals={food:t.food,disc:t.disc,other:t.other,delFee:t.delFee,pkgAmt:t.pkgAmt,sub:t.sub,tax:t.tax,grat:t.grat,total:t.total,paid:t.paid,bal:t.bal,dep:t.dep}; await btApi('save',{doc:dd}); if(typeof btClean!=='undefined') btClean=btSnap(); }catch(e){} }
 };
 
 </script>
