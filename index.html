@@ -2296,7 +2296,7 @@ window.renderTrayMenu=function(){
 const _btCalcPU=window.calc;
 window.calc=function(){ _btCalcPU.apply(this,arguments); btPkgButtons(); };
 </script>
-<!-- build: organized filing + file name, Nov 10 2026 -->
+<!-- build: party trays to go label, Nov 10 2026 -->
 <script>
 /* ---------- Dishes that come with bread (MK, Nov 5): extra bread lines merge into the dish on the Kitchen Order ----------
    Invoice: "1 ST Chole Bhatura" + "10 PCS Bhatura" (charged on its own line)
@@ -2899,6 +2899,16 @@ window.saveToOneDrive=async function(forcePick){
   }
   /* remember the file name with the invoice in the register (quietly, only if it is already saved) */
   if(g.invNo && wasClean && typeof btApi==='function'){ try{ const dd=gather(); const t=computeTotals(); dd.totals={food:t.food,disc:t.disc,other:t.other,delFee:t.delFee,pkgAmt:t.pkgAmt,sub:t.sub,tax:t.tax,grat:t.grat,total:t.total,paid:t.paid,bal:t.bal,dep:t.dep}; await btApi('save',{doc:dd}); if(typeof btClean!=='undefined') btClean=btSnap(); }catch(e){} }
+};
+
+</script>
+<script>
+/* ---------- Register type label = "Party Trays To Go" (MK, Nov 10) — filter in 📁 Invoices matches old and new rows ---------- */
+const _tyRender=window.renderSaved;
+window.renderSaved=function(){
+  try{ (btList||[]).forEach(r=>{ if(r&&r['Type']==='Party Trays') r['Type']='Party Trays To Go'; }); }catch(e){}
+  const ft=document.getElementById('fT'); if(ft) [...ft.options].forEach(o=>{ if(o.textContent==='Party Trays'){ o.textContent='Party Trays To Go'; o.value='Party Trays To Go'; } });
+  return _tyRender.apply(this,arguments);
 };
 
 </script>
