@@ -2296,7 +2296,7 @@ window.renderTrayMenu=function(){
 const _btCalcPU=window.calc;
 window.calc=function(){ _btCalcPU.apply(this,arguments); btPkgButtons(); };
 </script>
-<!-- build: folder button + backup folder, Nov 10 2026 -->
+<!-- build: new invoice flow, Nov 10 2026 -->
 <script>
 /* ---------- Dishes that come with bread (MK, Nov 5): extra bread lines merge into the dish on the Kitchen Order ----------
    Invoice: "1 ST Chole Bhatura" + "10 PCS Bhatura" (charged on its own line)
@@ -2794,6 +2794,32 @@ async function btChangeFolder(){
   const b=document.createElement('button'); b.className='ghost'; b.id='btFolderBtn'; b.textContent='📂 Choose folder'; b.onclick=btChangeFolder; ob.after(b);
   (async()=>{ try{ const h=await _idbGet(BT_DIRKEY); if(h) btFolderShow(h); }catch(e){} })();
 })();
+
+</script>
+<script>
+/* ---------- Finish one invoice, start the next (MK, Nov 10) ----------
+   "＋ New invoice" closes the current one and opens a blank invoice. If there are changes that are not saved yet,
+   it asks first, so nothing is lost. Export / Import (JSON) buttons hidden: staff don't need them. */
+(function(){
+  const tb=document.querySelector('.toolbar'); if(!tb) return;
+  [...tb.querySelectorAll('button')].forEach(b=>{ const oc=b.getAttribute('onclick')||'';
+    if(/exportJSON|importFile/.test(oc)) b.style.display='none';
+    if(/^newDoc\(\)/.test(oc)) b.textContent='＋ New invoice'; });
+})();
+function btSnap(){ try{ const d=gather(); delete d.savedAt; return JSON.stringify([d.mode,d.fields,d.items,d.pmts]); }catch(e){ return ''; } }
+let btClean=btSnap();
+function btIsBlank(){ try{ const d=gather(); return !(d.fields.cName||'').trim() && !(d.items||[]).length; }catch(e){ return true; } }
+const _nwLoad=window.load; window.load=function(){ const r=_nwLoad.apply(this,arguments); btClean=btSnap(); return r; };
+const _nwSave=window.saveDoc; window.saveDoc=async function(){ const r=await _nwSave.apply(this,arguments); if(($('invNo')||{}).value) btClean=btSnap(); return r; };
+const _nwNew=window.newDoc;
+window.newDoc=async function(){
+  if(!btIsBlank() && btSnap()!==btClean){
+    if(confirm('This invoice has changes that are not saved.\n\nOK = Save it first, then start a new invoice\nCancel = more choices')){
+      await saveDoc(); if(btSnap()!==btClean) return;   /* save did not go through (missing info) — stay on it */
+    } else if(!confirm('Start a new invoice WITHOUT saving these changes?\n\nOK = discard changes and start new\nCancel = stay on this invoice')) return;
+  }
+  const r=_nwNew.apply(this,arguments); btClean=btSnap(); window.scrollTo(0,0); return r;
+};
 
 </script>
 </body>
