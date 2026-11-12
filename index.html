@@ -2741,6 +2741,7 @@ async function btWriteSafe(getDir,name,blob){
 }
 let btPending=null;
 const BT_BAK='_Backup files (do not open)';
+const BT_TOP='Bombaytalk Invoices';
 async function btFolderSave(getDir,files,getBak,json){ for(const [n,b] of files) await btWriteSafe(getDir,n,b);
   if(getBak&&json){ try{ await btWriteSafe(getBak,json[0],json[1]); }catch(e){} await btDropJson(getDir,getBak); } }
 /* move the old app-made .json files (next to a .doc of the same name) into the backup folder */
@@ -2784,7 +2785,7 @@ window.parseDate=function(s){
 
 /* 📂 Folder button: choose / change where invoices are saved, and always show the current folder (MK, Nov 10) */
 function btFolderShow(h){ const b=document.getElementById('btFolderBtn'); if(!b) return; const n=h&&h.name?h.name:'';
-  b.textContent='📂 '+(n?'Folder: '+n:'Choose folder'); b.title=n?('Invoices save to: '+n+' ▸ Bombaytalk Invoices ▸ <month>. Click to change.'):'Choose the folder for ☁ OneDrive saves'; }
+  b.textContent='📂 '+(n?'Folder: '+n:'Choose folder'); b.title=n?('Invoices save to: '+n+' ▸ Bombaytalk Invoices ▸ Party Trays To Go / On-site Catering. Click to change.'):'Choose the folder for ☁ OneDrive saves'; }
 async function btChangeFolder(){
   if(!window.showDirectoryPicker){ alert("This browser can't save straight to a folder. Use Chrome or Edge on the office computer."); return; }
   try{ const h=await getRootDir(true); btFolderShow(h); flash('Invoices will now save to: '+h.name+' ▸ Bombaytalk Invoices'); }catch(e){}
@@ -2855,7 +2856,7 @@ function btAskName(def){
     document.body.appendChild(w);
     const inp=w.querySelector('#btFnIn'); inp.value=def; inp.focus(); inp.select();
     const g=gather().fields, d=parseDate(g.eDate||g.tDate||'');
-    w.querySelector('#btFnWhere').textContent='Folder: Bombaytalk Invoices ▸ '+btTypeName()+' ▸ '+(d?d.slice(0,7):'Undated');
+    w.querySelector('#btFnWhere').textContent='Folder: Bombaytalk Invoices ▸ '+btTypeName();
     const done=v=>{ w.remove(); res(v); };
     w.querySelector('#btFnOk').onclick=()=>done(btSafeName(inp.value)||def);
     w.querySelector('#btFnCancel').onclick=()=>done(null);
@@ -2870,24 +2871,24 @@ window.saveToOneDrive=async function(forcePick){
   const wasClean=(typeof btClean==='undefined')||btSnap()===btClean;
   const name=await btAskName(btFile.name||btDefaultName()); if(!name) return;
   const d=parseDate(g.eDate||g.tDate||''); const month=d?d.slice(0,7):'Undated', type=btTypeName();
-  const parts=['Bombaytalk Invoices',type,month], path=parts.concat([name]).join('/');
+  const parts=[BT_TOP,type], path=parts.concat([name]).join('/');
   const prev=btFile.path, legacyBase=fnameBase();   /* older saves: Bombaytalk Invoices/<month>/<date_client>.doc */
   btFile={name,path};
   const docB=wordBlob(), jsonB=jsonBlob();
   let root; try{ root=await getRootDir(!!forcePick); }catch(e){ if(e&&e.name==='AbortError') return; root=null; }
   btFolderShow(root);
   const getDir=()=>btDirPath(root,parts,true);
-  const getBak=()=>btDirPath(root,['Bombaytalk Invoices',BT_BAK,type,month],true);
+  const getBak=()=>btDirPath(root,[BT_TOP,BT_BAK],true);
   const tidy=async()=>{   /* one file per invoice: remove where it used to be */
     if(prev&&prev!==path){ const pp=prev.split('/'), nm=pp.pop();
       try{ const od=await btDirPath(root,pp,false); await od.removeEntry(nm+'.doc'); }catch(e){}
-      try{ const ob=await btDirPath(root,['Bombaytalk Invoices',BT_BAK].concat(pp.slice(1)),false); await ob.removeEntry(nm+'.json'); }catch(e){} }
+      for(const bp of [[BT_TOP,BT_BAK],[BT_TOP,BT_BAK].concat(pp.slice(1))]){ try{ const ob=await btDirPath(root,bp,false); if(bp.length>2||nm!==name) await ob.removeEntry(nm+'.json'); }catch(e){} } }
     try{ const ld=await btDirPath(root,['Bombaytalk Invoices',month],false);
       for(const ext of ['.doc','.json']){ try{ const f=await (await ld.getFileHandle(legacyBase+ext)).getFile();
         if(ext==='.json'){ const b=await getBak(); try{ await b.getFileHandle(legacyBase+'.json'); }catch(x){ await btWriteOnce(b,legacyBase+'.json',f); } }
         await ld.removeEntry(legacyBase+ext); }catch(e){} } }catch(e){}
   };
-  const where=(root&&root.name?root.name+' ▸ ':'')+'Bombaytalk Invoices ▸ '+type+' ▸ '+month;
+  const where=(root&&root.name&&root.name!==BT_TOP?root.name+' ▸ ':'')+BT_TOP+' ▸ '+type;
   const run=async()=>{ await btWriteSafe(getDir,name+'.doc',docB); try{ await btWriteSafe(getBak,name+'.json',jsonB); }catch(e){} await tidy(); };
   if(!root){ dl(docB,name+'.doc'); flash('Word file downloaded. The invoice is safe in the office register.'); return; }
   try{ await run(); flash('Saved to '+where); }
@@ -2937,6 +2938,98 @@ window.btMissing=function(){ const m=_btMissAddr.apply(this,arguments); btAddrLa
 const _btModeAddr=window.setMode; window.setMode=function(){ const r=_btModeAddr.apply(this,arguments); try{ btAddrLabel(); }catch(e){} return r; };
 const _btCalcAddr=window.calc; window.calc=function(){ const r=_btCalcAddr.apply(this,arguments); try{ btAddrLabel(); }catch(e){} return r; };
 try{ btAddrLabel(); }catch(e){}
+</script>
+<script>
+/* ---------- Simple OneDrive folders + 🧹 Organize (MK, Nov 12: "creating multiple subfolders") ----------
+   New layout (no month folders — the file name starts with the date, so files sort by date):
+     <chosen folder> ▸ Bombaytalk Invoices ▸ Party Trays To Go   ▸ 2026-11-12 Party Trays To Go - Morgan & Stanley - BT-2026-0010.doc
+                                         ▸ On-site Catering      ▸ 2026-12-19 On-site Catering - Anjali - BT-2026-0011.doc
+                                         ▸ _Backup files (do not open) ▸ (one .json per invoice, app use only)
+   - If someone picks the "Bombaytalk Invoices" folder itself, the app no longer makes a second one inside it.
+   - Picking a folder INSIDE it (a type / month / backup folder) is refused with a clear message.
+   - 🧹 Organize: moves every app-made Word file and backup into the layout above (renamed by date + type + client + invoice #
+     when the backup tells us), folds nested "Bombaytalk Invoices" folders in, and removes the empty month folders.
+     Never deletes a Word file: an older duplicate goes to _Backup files ▸ Older copies. Other files are left alone. */
+const BT_TYPES=['Party Trays To Go','On-site Catering'];
+const BT_INNER=/^(Party Trays To Go|On-site Catering|_Backup files.*|Older copies|\d{4}-\d{2}|Undated)$/;
+btDirPath=async function(root,parts,create){ let p=parts.slice();
+  if(root&&root.name===BT_TOP&&p[0]===BT_TOP) p=p.slice(1);
+  let d=root; for(const x of p) d=await d.getDirectoryHandle(x,{create:!!create}); return d; };
+const _btRootOrg=getRootDir;
+getRootDir=async function(forcePick){ let h=await _btRootOrg(forcePick);
+  for(let i=0;i<3&&h&&BT_INNER.test(h.name);i++){
+    alert('You picked the "'+h.name+'" folder, which is INSIDE "Bombaytalk Invoices".\n\nPlease pick the folder that holds "Bombaytalk Invoices" (or "Bombaytalk Invoices" itself), so all invoices stay in one place.');
+    h=await _btRootOrg(true); }
+  if(h&&BT_INNER.test(h.name)) throw Object.assign(new Error('wrong folder'),{name:'AbortError'});
+  return h; };
+async function btMoveFile(fromDir,name,toDir,newName){
+  const fh=await fromDir.getFileHandle(name);
+  if(fh.move){ try{ await fh.move(toDir,newName); return; }catch(e){} }
+  const f=await fh.getFile(); await btWriteOnce(toDir,newName,f); await fromDir.removeEntry(name);
+}
+async function btExists(dir,name){ try{ return await (await dir.getFileHandle(name)).getFile(); }catch(e){ return null; } }
+async function btOrganize(){
+  if(!window.showDirectoryPicker){ alert('Use Chrome or Edge on the office computer.'); return; }
+  let root; try{ root=await getRootDir(false); }catch(e){ return; }
+  btFolderShow(root);
+  const top=(root.name===BT_TOP)?root:await root.getDirectoryHandle(BT_TOP,{create:true});
+  const bak=await top.getDirectoryHandle(BT_BAK,{create:true});
+  const typeDir={}; for(const t of BT_TYPES) typeDir[t]=await top.getDirectoryHandle(t,{create:true});
+  flash('Organizing the invoice folder…');
+  /* 1. collect every file under Bombaytalk Invoices (any depth, incl. nested "Bombaytalk Invoices") */
+  const files=[], dirs=[];
+  const walk=async(dir,path,depth)=>{ if(depth>6) return;
+    for await (const [n,h] of dir.entries()){
+      if(h.kind==='file') files.push({dir,name:n,path:path.concat(n)});
+      else { dirs.push({parent:dir,name:n,handle:h,path:path.concat(n),depth}); await walk(h,path.concat(n),depth+1); } } };
+  await walk(top,[],0);
+  /* 2. read every backup .json → invoice data by base name */
+  const info={};
+  for(const f of files){ if(!/\.json$/i.test(f.name)) continue;
+    try{ const j=JSON.parse(await (await (await f.dir.getFileHandle(f.name)).getFile()).text()); info[f.name.replace(/\.json$/i,'')]=j; }catch(e){} }
+  const nameFor=(base,j,typeGuess)=>{ const g=(j&&j.fields)||{};
+    const type=j?(j.mode==='trays'?BT_TYPES[0]:BT_TYPES[1]):typeGuess;
+    if(!j||!g.cName) return {type,name:base};
+    const d=parseDate(g.eDate||g.tDate||'');
+    const fixed=g.fileName&&String(g.fileName).trim();
+    return {type,name:fixed||btSafeName([(d||'Undated')+' '+type,(g.cName||'').trim(),g.invNo||''].filter(Boolean).join(' - '))}; };
+  let moved=0,renamed=0,older=0,bk=0,left=0;
+  /* 3. Word files → <type>/<name>.doc */
+  for(const f of files){ if(!/\.doc$/i.test(f.name)||f.path.includes('Older copies')) continue;
+    const base=f.name.replace(/\.doc$/i,''), j=info[base];
+    const inType=f.path.find(p=>BT_TYPES.includes(p));
+    const guess=inType||(/on-?site|catering/i.test(base)&&!/tray/i.test(base)?BT_TYPES[1]:BT_TYPES[0]);
+    const want=nameFor(base,j,guess); const dest=typeDir[want.type]; const target=want.name+'.doc';
+    if(f.name===target&&await f.dir.isSameEntry(dest)) { left++; continue; }
+    try{
+      const cur=await (await f.dir.getFileHandle(f.name)).getFile(), there=await btExists(dest,target);
+      if(there){ const oc=await bak.getDirectoryHandle('Older copies',{create:true});
+        if(there.lastModified>=cur.lastModified){ await btMoveFile(f.dir,f.name,oc,base+' (older '+new Date(cur.lastModified).toISOString().slice(0,10)+').doc'); older++; continue; }
+        await btMoveFile(dest,target,oc,want.name+' (older '+new Date(there.lastModified).toISOString().slice(0,10)+').doc'); older++; }
+      await btMoveFile(f.dir,f.name,dest,target); moved++; if(target!==f.name) renamed++;
+      if(j&&base!==want.name) info[want.name]=j;
+    }catch(e){ console.warn('organize',f.path.join('/'),e); } }
+  /* 4. backups → _Backup files (flat), named like the Word file */
+  for(const f of files){ if(!/\.json$/i.test(f.name)) continue;
+    const base=f.name.replace(/\.json$/i,''), j=info[base];
+    const want=nameFor(base,j,BT_TYPES[0]).name+'.json';
+    if(f.name===want&&await f.dir.isSameEntry(bak)) continue;
+    try{ const cur=await (await f.dir.getFileHandle(f.name)).getFile(), there=await btExists(bak,want);
+      if(there&&there.lastModified>=cur.lastModified){ await f.dir.removeEntry(f.name); bk++; continue; }
+      if(there) await bak.removeEntry(want);
+      await btMoveFile(f.dir,f.name,bak,want); bk++; }catch(e){ console.warn('organize json',f.path.join('/'),e); } }
+  /* 5. remove folders that are now empty (deepest first) — never a folder with anything in it */
+  let gone=0; dirs.sort((a,b)=>b.depth-a.depth);
+  for(const d of dirs){ if(await d.handle.isSameEntry(bak)||(BT_TYPES.includes(d.name)&&await d.parent.isSameEntry(top))) continue;
+    try{ let empty=true; for await (const _ of d.handle.entries()){ empty=false; break; } if(empty){ await d.parent.removeEntry(d.name); gone++; } }catch(e){} }
+  const msg='Invoice folder organized: '+moved+' Word file'+(moved===1?'':'s')+' moved'+(renamed?' ('+renamed+' renamed by client)':'')+
+    ', '+bk+' backup'+(bk===1?'':'s')+' tidied, '+gone+' empty folder'+(gone===1?'':'s')+' removed'+(older?', '+older+' older duplicate'+(older===1?'':'s')+' kept in _Backup files ▸ Older copies':'')+'.';
+  flash(msg); alert(msg+'\n\nEverything is now in:\n'+(root.name===BT_TOP?'':root.name+' ▸ ')+BT_TOP+' ▸ Party Trays To Go  /  On-site Catering');
+}
+(function(){ const fb=document.getElementById('btFolderBtn'); if(!fb) return;
+  const b=document.createElement('button'); b.className='ghost'; b.id='btOrgBtn'; b.textContent='🧹 Organize folder';
+  b.title='Put every invoice Word file into Bombaytalk Invoices ▸ Party Trays To Go / On-site Catering and remove empty folders';
+  b.onclick=btOrganize; fb.after(b); })();
 </script>
 </body>
 </html>
