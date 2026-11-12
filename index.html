@@ -3031,5 +3031,57 @@ async function btOrganize(){
   b.title='Put every invoice Word file into Bombaytalk Invoices ▸ Party Trays To Go / On-site Catering and remove empty folders';
   b.onclick=btOrganize; fb.after(b); })();
 </script>
+<script>
+/* ---------- Every invoice is in the app (MK, Nov 12: "Parul ... that name is not showing in the app") ----------
+   Cause: ☁ OneDrive / Print / PDF / Word worked on an invoice that was never 💾 Saved, so it never reached the office register.
+   Now: those buttons SAVE FIRST (same checks as 💾 Save). If the internet is down, the copy kept on this computer is sent
+   automatically next time, and the print / file still goes ahead.
+   🧹 Organize folder also finds invoices that exist in the folder (backup files) but not in the app, and adds them. */
+async function btEnsureSaved(){
+  const dirty=!(($('invNo')||{}).value)||(typeof btClean!=='undefined'&&typeof btSnap==='function'&&btSnap()!==btClean);
+  if(!dirty) return true;
+  await saveDoc();
+  if(($('invNo')||{}).value) return true;
+  let miss=[]; try{ miss=btMissing(); }catch(e){}
+  return !miss.length;   /* fields missing → stop (saveDoc already said what); only a connection problem → go ahead */
+}
+for(const fn of ['saveToOneDrive','printDoc','savePDF','exportWord']){
+  const orig=window[fn]; if(typeof orig!=='function') continue;
+  window[fn]=async function(){ if(!(await btEnsureSaved())) return; return orig.apply(this,arguments); };
+}
+(function(){ const p=document.getElementById('pdfBtn'); if(p) p.onclick=()=>window.savePDF(); })();
+
+/* folder backups that are not in the register → add them */
+async function btRegisterFromFolder(){
+  let root; try{ root=await getRootDir(false); }catch(e){ return; }
+  let top; try{ top=(root.name===BT_TOP)?root:await root.getDirectoryHandle(BT_TOP); }catch(e){ return; }
+  let bak; try{ bak=await top.getDirectoryHandle(BT_BAK); }catch(e){ return; }
+  let rows=[]; try{ rows=(await btApi('list')).rows||[]; }catch(e){ return; }
+  const nos=new Set(rows.map(r=>String(r['Invoice #'])));
+  const key=(n,d)=>String(n||'').trim().toLowerCase()+'|'+(parseDate(d||'')||'');
+  const seen=new Set(rows.map(r=>key(r['Client'],r['Service date'])));
+  const found=[];
+  for await (const [n,h] of bak.entries()){ if(h.kind!=='file'||!/\.json$/i.test(n)) continue;
+    try{ const j=JSON.parse(await (await h.getFile()).text()); const f=j&&j.fields; if(!f||!String(f.cName||'').trim()) continue;
+      if(f.invNo&&nos.has(String(f.invNo))) continue;
+      if(!f.invNo&&seen.has(key(f.cName,f.eDate||f.tDate))) continue;
+      found.push(j); }catch(e){} }
+  /* one per invoice: same client + date → keep the one with an invoice # (else the newest) */
+  const pick={}; for(const j of found){ const k=key(j.fields.cName,j.fields.eDate||j.fields.tDate); const o=pick[k];
+    if(!o||(!o.fields.invNo&&j.fields.invNo)||(!!o.fields.invNo===!!j.fields.invNo&&String(j.savedAt||'')>String(o.savedAt||''))) pick[k]=j; }
+  found.length=0; Object.values(pick).forEach(j=>found.push(j));
+  if(!found.length) return;
+  const names=found.map(j=>'• '+j.fields.cName+(j.fields.eDate||j.fields.tDate?' ('+(j.fields.eDate||j.fields.tDate)+')':'')+(j.fields.invNo?' '+j.fields.invNo:''));
+  if(!confirm('These invoices are in the folder but were never saved in the app:\n\n'+names.join('\n')+'\n\nAdd them to the app now? (They keep their dishes, prices and payments.)')) return;
+  let ok=0; const done=[];
+  for(const j of found){ try{ load(j); const t=computeTotals(); const d=gather();
+      d.totals={food:t.food,disc:t.disc,other:t.other,delFee:t.delFee,pkgAmt:t.pkgAmt,sub:t.sub,tax:t.tax,grat:t.grat,total:t.total,paid:t.paid,bal:t.bal,dep:t.dep};
+      const r=await btApi('save',{doc:d}); $('invNo').value=r.no; if(r.invDate) $('invDate').value=r.invDate; ok++; done.push(d.fields.cName+' → '+r.no); }catch(e){ console.warn('register',e); } }
+  try{ calc(); if(typeof btClean!=='undefined') btClean=btSnap(); }catch(e){}
+  alert('Added to the app: '+ok+' invoice'+(ok===1?'':'s')+'\n\n'+done.join('\n')+'\n\nYou will find '+(ok===1?'it':'them')+' in 📁 Invoices.');
+}
+(function(){ const b=document.getElementById('btOrgBtn'); if(!b) return;
+  b.onclick=async()=>{ await btOrganize(); await btRegisterFromFolder(); }; })();
+</script>
 </body>
 </html>
