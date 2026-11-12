@@ -3083,5 +3083,33 @@ async function btRegisterFromFolder(){
 (function(){ const b=document.getElementById('btOrgBtn'); if(!b) return;
   b.onclick=async()=>{ await btOrganize(); await btRegisterFromFolder(); }; })();
 </script>
+<script>
+/* ---------- One button: 💾 Save (MK, Nov 12: "organize ... and the one drive button ... shouldn't be there for other people,
+   there is option saving / choosing folder") ----------
+   - 💾 Save now does BOTH: saves the invoice in the app AND keeps its Word file in the chosen folder (📂).
+   - ☁ OneDrive button removed for everyone. 🧹 Organize folder shows only for MK (master).
+   - First Save on a computer with no folder chosen: asks once for the month folder (e.g. November).
+   - The folder permission is asked right at the click, so the browser allows it. */
+(function(){ const b=[...document.querySelectorAll('button')].find(x=>/saveToOneDrive/.test(x.getAttribute('onclick')||'')); if(b) b.style.display='none'; })();
+const _btRoleSave=window.btApplyRole;
+window.btApplyRole=function(){ const r=_btRoleSave?_btRoleSave.apply(this,arguments):undefined;
+  const o=document.getElementById('btOrgBtn'); if(o) o.style.display=(typeof btRole!=='undefined'&&btRole==='master')?'':'none'; return r; };
+(function(){ const o=document.getElementById('btOrgBtn'); if(o&&!(typeof btRole!=='undefined'&&btRole==='master')) o.style.display='none'; })();
+let btFolderBusy=false;
+const _btSaveBoth=window.saveDoc;
+window.saveDoc=async function(){
+  /* 1. folder permission first, while the click still counts */
+  let root=null;
+  if(window.showDirectoryPicker&&!btFolderBusy){ try{ root=await getRootDir(false); btFolderShow(root); }catch(e){ root=null; } }
+  /* 2. save in the app (all the usual checks) */
+  const r=await _btSaveBoth.apply(this,arguments);
+  /* 3. Word file into the folder — only if the save went through */
+  const ok=!!(($('invNo')||{}).value)&&(typeof btClean==='undefined'||btSnap()===btClean);
+  if(root&&ok&&!btFolderBusy){ btFolderBusy=true;
+    const ask=window.btAskName; if(btFile&&btFile.name) window.btAskName=async d=>d;   /* name asked only the first time */
+    try{ await saveToOneDrive(false); }catch(e){} finally{ window.btAskName=ask; btFolderBusy=false; } }
+  return r;
+};
+</script>
 </body>
 </html>
