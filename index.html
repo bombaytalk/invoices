@@ -2912,5 +2912,31 @@ window.renderSaved=function(){
 };
 
 </script>
+<script>
+/* ---------- Address + contact always on the invoice, so the Kitchen Order (driver copy) has them (MK, Nov 12) ----------
+   MK: "my staff ... keep missing it". Contact phone is required on every invoice; the address is required for every
+   delivery (Party Trays To Go) and every on-site event. Save / Print / PDF / Word stay blocked until they are filled.
+   The label tells staff which address: Delivery address / Venue address / Address. */
+function btAddrNeeded(){ const m=document.body.dataset.mode;
+  if(m==='trays') return /deliver/i.test(($('tService')||{}).value||'') ? 'Delivery address' : '';
+  return 'Venue address'; }
+function btAddrLabel(){ const lab=$('cAddr')&&$('cAddr').parentNode.querySelector('b'); if(!lab) return;
+  const n=btAddrNeeded(); lab.textContent=n||'Address';
+  $('cAddr').placeholder=n==='Venue address'?'Venue name, street, city':'Street, City, State ZIP';
+  const pl=$('cPhone')&&$('cPhone').parentNode.querySelector('b'); if(pl) pl.textContent='Contact phone'; }
+(function(){ const st=document.createElement('style');
+  st.textContent='input.btmiss{outline:2px solid #d93025!important;background:#fff4f4!important}';
+  document.head.appendChild(st); })();
+const _btMissAddr=window.btMissing;
+window.btMissing=function(){ const m=_btMissAddr.apply(this,arguments); btAddrLabel();
+  const ph=$('cPhone'), ad=$('cAddr'), need=btAddrNeeded();
+  const phOk=(ph.value.replace(/\D/g,'').length>=10); ph.classList.toggle('btmiss',!phOk); if(!phOk) m.push('Contact phone');
+  const adOk=!need||ad.value.trim().length>=5; ad.classList.toggle('btmiss',!adOk); if(!adOk) m.push(need);
+  return m; };
+['cPhone','cAddr'].forEach(id=>{ const e=$(id); if(e) e.addEventListener('input',()=>{ try{ btMissing(); }catch(x){} }); });
+const _btModeAddr=window.setMode; window.setMode=function(){ const r=_btModeAddr.apply(this,arguments); try{ btAddrLabel(); }catch(e){} return r; };
+const _btCalcAddr=window.calc; window.calc=function(){ const r=_btCalcAddr.apply(this,arguments); try{ btAddrLabel(); }catch(e){} return r; };
+try{ btAddrLabel(); }catch(e){}
+</script>
 </body>
 </html>
